@@ -55,10 +55,7 @@ setupSocket(server);
 // ⭐ Correct CORS for cookies
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://gymstack-a-full-stack-gym-management-5kco.onrender.com",
-    ],
+    origin: ["https://gymstack-zobot.onrender.com"],
     methods: ["GET", "POST", "PUT", "DELETE"], // FIXED
     credentials: true,
   })
