@@ -3,7 +3,7 @@ const User = require("../Models/user-model");
 const adminController = require("./zobotadminController");
 const trainerController = require("./zobottrainerController");
 const memberController = require("./zobotmemberController");
-const newVisitorController = require("./newVisitorController"); // Import the new controller
+const newVisitorController = require("./NewVisitorController"); // Import the new controller
 
 // Welcome image URL - replace with your actual image URL
 const WELCOME_IMAGE_URL =
