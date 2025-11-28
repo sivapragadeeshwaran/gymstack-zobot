@@ -1,7 +1,7 @@
 // controllers/freeTrialController.js
 const sessionStore = require("../utils/sessionStore");
 const Trainer = require("../Models/trainer-model");
-const newVisitorController = require("./newVisitorController");
+const newVisitorController = require("./NewVisitorController");
 const generateOtp = require("../utils/generateOtp");
 const { transporter } = require("./sendMailController");
 const googleCalendarController = require("./googleCalendarController");
