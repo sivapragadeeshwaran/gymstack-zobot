@@ -48,20 +48,10 @@ export default function Login() {
     e.preventDefault();
     setSubmitting(true);
 
-    console.log("=== LOGIN PROCESS START ===");
-    console.log("Form data:", formData);
-
     try {
-      console.log("Sending login request...");
       const res = await axiosInstance.post("/api/users/login", formData);
 
-      console.log("Login response received:", res);
-      console.log("Response data:", res.data);
-
       const { user, token } = res.data;
-
-      console.log("Extracted user:", user);
-      console.log("Extracted token:", token);
 
       if (!token) {
         console.error("❌ No token in response");
@@ -69,10 +59,8 @@ export default function Login() {
         return;
       }
 
-      console.log("✅ Token exists, calling AuthContext login function...");
       login(user, token);
 
-      console.log("✅ AuthContext login function called");
       toast.success("Login successful!");
 
       // If we came from membership plans with a selected plan, redirect back there
@@ -83,7 +71,7 @@ export default function Login() {
         });
       } else {
         const role = user.role?.toLowerCase();
-        console.log("Navigating to role-based dashboard:", role);
+
         navigate(
           {
             admin: "/adminpanel",
@@ -98,7 +86,6 @@ export default function Login() {
       toast.error(err.response?.data?.message || "Login failed");
     } finally {
       setSubmitting(false);
-      console.log("=== LOGIN PROCESS END ===");
     }
   };
 

@@ -11,7 +11,6 @@ async function getOAuthToken() {
 
     // If we're using the example URL (for testing/development), return a mock token
     if (oauthUrl === "https://oauth.example.com/token") {
-      console.log("🔑 Using mock OAuth token for development");
       return "mock-oauth-token-for-development";
     }
 
@@ -28,7 +27,6 @@ async function getOAuthToken() {
 
     // For development purposes, return a mock token if OAuth fails
     if (process.env.NODE_ENV === "development") {
-      console.log("🔑 Using fallback mock OAuth token");
       return "fallback-mock-oauth-token";
     }
 
@@ -41,7 +39,6 @@ async function callGroqAI(userMessage) {
   try {
     // First get OAuth 2.0 token
     const token = await getOAuthToken();
-    console.log("🔑 OAuth token obtained successfully");
 
     // Check for polite messages first
     const lowerMessage = userMessage.toLowerCase();
@@ -114,8 +111,6 @@ async function callGroqAI(userMessage) {
 
     // For development purposes, return a mock response if Groq API fails
     if (process.env.NODE_ENV === "development") {
-      console.log("🤖 Using fallback mock AI response");
-
       // Check if the message is fitness-related
       const lowerMessage = userMessage.toLowerCase();
       const fitnessKeywords = [
@@ -226,8 +221,6 @@ async function callGroqAI(userMessage) {
 
 // Main AI Assistant Handler
 exports.handleAIAssistant = async (message, res, session, visitorId) => {
-  console.log("🤖 [AI] AI Assistant called with message:", message);
-
   // Determine the context (new visitor or member) based on session properties
   const isNewVisitor = session.visitorStep !== undefined;
   const backButton = isNewVisitor
@@ -312,8 +305,6 @@ exports.handleAIAssistant = async (message, res, session, visitorId) => {
 
 // Dashboard function (needed for navigation)
 function showMemberDashboard(res, session, visitorId) {
-  console.log("🔥 [AI] Showing dashboard");
-
   const greeting = `👋 Welcome ${
     session.username || "Member"
   }! How can I assist you today?`;
@@ -334,8 +325,6 @@ function showMemberDashboard(res, session, visitorId) {
   // Make sure session step is dashboard
   session.memberStep = "dashboard";
   sessionStore.set(visitorId, session);
-
-  console.log("🔥 [AI] Dashboard payload:", JSON.stringify(payload, null, 2));
 
   return res.json(payload);
 }

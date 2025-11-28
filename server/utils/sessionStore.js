@@ -30,9 +30,6 @@ class SessionStore {
   resetIfEmailChanged(visitorId, currentEmail) {
     const session = this.get(visitorId);
     if (session && session.email && session.email !== currentEmail) {
-      console.log(
-        `Visitor email changed: ${session.email} → ${currentEmail}. Resetting session.`
-      );
       this.clear(visitorId);
       return {};
     }

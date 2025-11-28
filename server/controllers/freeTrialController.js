@@ -252,10 +252,6 @@ function sendBookingUpdateEmail(session) {
 }
 
 exports.handleFreeTrial = (message, res, session, visitorId) => {
-  console.log("🔥 [FREE TRIAL] handleFreeTrial called with message:", message);
-  console.log("🔥 [FREE TRIAL] Current session step:", session.visitorStep);
-  console.log("🔥 [FREE TRIAL] Message type:", typeof message);
-
   if (message && typeof message === "object") {
     console.log("🔥 [FREE TRIAL] Message object keys:", Object.keys(message));
     console.log("🔥 [FREE TRIAL] Message object type:", message.type);
@@ -266,7 +262,6 @@ exports.handleFreeTrial = (message, res, session, visitorId) => {
     if (!session.freeTrialData) {
       session.freeTrialData = {};
       sessionStore.set(visitorId, session);
-      console.log("🔥 [FREE TRIAL] Initialized free trial data");
     }
 
     // Handle function invocations from carousel actions
@@ -283,22 +278,16 @@ exports.handleFreeTrial = (message, res, session, visitorId) => {
 
       switch (name) {
         case "selectTrainer":
-          console.log(
-            `🔥 [FREE TRIAL] Trainer selected: ${data.trainer_name} (${data.trainer_id})`
-          );
           session.freeTrialData.trainer = {
             id: data.trainer_id,
             name: data.trainer_name,
           };
           session.visitorStep = "free_trial_confirmation";
           sessionStore.set(visitorId, session);
-          console.log(
-            "🔥 [FREE TRIAL] Session updated, showing booking summary"
-          );
+
           return showBookingSummary(res, session, visitorId);
 
         default:
-          console.log("🔥 [FREE TRIAL] Unknown function name:", name);
           return res.json({
             action: "reply",
             replies: [
@@ -325,19 +314,13 @@ exports.handleFreeTrial = (message, res, session, visitorId) => {
           const trainerId = cardData.element.id;
           const trainerName = cardData.element.title;
 
-          console.log(
-            `🔥 [FREE TRIAL] Trainer selected from carousel: ${trainerName} (${trainerId})`
-          );
-
           session.freeTrialData.trainer = {
             id: trainerId,
             name: trainerName,
           };
           session.visitorStep = "free_trial_confirmation";
           sessionStore.set(visitorId, session);
-          console.log(
-            "🔥 [FREE TRIAL] Session updated, showing booking summary"
-          );
+
           return showBookingSummary(res, session, visitorId);
         }
       } catch (error) {
@@ -354,7 +337,6 @@ exports.handleFreeTrial = (message, res, session, visitorId) => {
       typeof message === "object" &&
       message.type === "date-timeslots"
     ) {
-      console.log("🔥 [FREE TRIAL] Processing date-timeslots as object");
       dateObj = message.date;
       timeStr = message.time;
     } else if (
@@ -363,7 +345,6 @@ exports.handleFreeTrial = (message, res, session, visitorId) => {
         (session.visitorStep === "free_trial_update" &&
           session.freeTrialData.fieldToUpdate === "date & time"))
     ) {
-      console.log("🔥 [FREE TRIAL] Processing date-timeslots as string");
       // Parse the formatted date string
       const dateMatch = message.match(
         /(\w+), (\w+) (\d+), (\d+) at (\d+):(\d+) ([AP]M)/
@@ -400,8 +381,6 @@ exports.handleFreeTrial = (message, res, session, visitorId) => {
           hour = 0;
         }
         timeStr = `${hour.toString().padStart(2, "0")}:${minutes}`;
-
-        console.log("🔥 [FREE TRIAL] Parsed date:", dateObj, "time:", timeStr);
       }
     }
 
@@ -409,7 +388,6 @@ exports.handleFreeTrial = (message, res, session, visitorId) => {
       // Parse the date to get day of week
       const [day, month, year] = dateObj.split("/");
       const selectedDate = new Date(`${year}-${month}-${day}`);
-      console.log("🔥 [FREE TRIAL] Selected date object:", selectedDate);
 
       const days = [
         "sunday",
@@ -421,12 +399,10 @@ exports.handleFreeTrial = (message, res, session, visitorId) => {
         "saturday",
       ];
       const dayOfWeek = days[selectedDate.getDay()];
-      console.log("🔥 [FREE TRIAL] Day of week:", dayOfWeek);
 
       // Parse the time
       const [hours, minutes] = timeStr.split(":").map(Number);
       const timeInMinutes = hours * 60 + minutes;
-      console.log("🔥 [FREE TRIAL] Time in minutes:", timeInMinutes);
 
       // Check if the time is within allowed hours
       let isValidTime = false;
@@ -439,10 +415,7 @@ exports.handleFreeTrial = (message, res, session, visitorId) => {
         isValidTime = timeInMinutes >= 360 && timeInMinutes <= 1200;
       }
 
-      console.log("🔥 [FREE TRIAL] Is valid time:", isValidTime);
-
       if (!isValidTime) {
-        console.log("🔥 [FREE TRIAL] Invalid time selected");
         return res.json({
           action: "reply",
           replies: [
@@ -468,9 +441,6 @@ exports.handleFreeTrial = (message, res, session, visitorId) => {
       } else {
         session.visitorStep = "free_trial_personal_training";
         sessionStore.set(visitorId, session);
-        console.log(
-          "🔥 [FREE TRIAL] Date/time stored, moving to personal training option"
-        );
 
         return res.json({
           action: "reply",
@@ -486,7 +456,6 @@ exports.handleFreeTrial = (message, res, session, visitorId) => {
 
     // Handle "Back to Main Menu" at any point
     if (message === "⬅️ Back to Main Menu") {
-      console.log("🔥 [FREE TRIAL] Back to Main Menu selected");
       session.visitorStep = "greeting";
       sessionStore.set(visitorId, session);
       return newVisitorController.showGreeting(res, session, visitorId);
@@ -495,33 +464,24 @@ exports.handleFreeTrial = (message, res, session, visitorId) => {
     // Handle free trial flow based on current step
     switch (session.visitorStep) {
       case "free_trial":
-        console.log("🔥 [FREE TRIAL] Handling free_trial step");
         return handleFreeTrialStart(message, res, session, visitorId);
 
       case "free_trial_name":
-        console.log("🔥 [FREE TRIAL] Handling free_trial_name step");
         return handleNameInput(message, res, session, visitorId);
 
       case "free_trial_email":
-        console.log("🔥 [FREE TRIAL] Handling free_trial_email step");
         return handleEmailInput(message, res, session, visitorId);
 
       case "free_trial_phone":
-        console.log("🔥 [FREE TRIAL] Handling free_trial_phone step");
         return handlePhoneInput(message, res, session, visitorId);
 
       case "free_trial_email_otp":
-        console.log("🔥 [FREE TRIAL] Handling free_trial_email_otp step");
         return handleEmailOTPVerification(message, res, session, visitorId);
 
       case "free_trial_datetime":
-        console.log("🔥 [FREE TRIAL] Handling free_trial_datetime step");
         return handleDateTimeSelection(message, res, session, visitorId);
 
       case "free_trial_personal_training":
-        console.log(
-          "🔥 [FREE TRIAL] Handling free_trial_personal_training step"
-        );
         return handlePersonalTrainingOption(message, res, session, visitorId);
 
       case "free_trial_trainer_selection":
@@ -529,46 +489,29 @@ exports.handleFreeTrial = (message, res, session, visitorId) => {
         // If we're at the trainer_selection step BUT a trainer is already selected,
         // don't ask again—just show the booking summary
         if (session.freeTrialData.trainer) {
-          console.log(
-            "🔥 [FREE TRIAL] Trainer already selected, skipping selection step"
-          );
           session.visitorStep = "free_trial_confirmation";
           sessionStore.set(visitorId, session);
           return showBookingSummary(res, session, visitorId);
         }
-        console.log(
-          "🔥 [FREE TRIAL] Handling free_trial_trainer_selection step"
-        );
+
         return handleTrainerSelection(message, res, session, visitorId);
 
       case "free_trial_trainer_specialization":
-        console.log(
-          "🔥 [FREE TRIAL] Handling free_trial_trainer_specialization step"
-        );
         return handleTrainerSpecialization(message, res, session, visitorId);
 
       case "free_trial_confirmation":
-        console.log("🔥 [FREE TRIAL] Handling free_trial_confirmation step");
         return handleBookingConfirmation(message, res, session, visitorId);
 
       case "free_trial_booked":
-        console.log("🔥 [FREE TRIAL] Handling free_trial_booked step");
         return handlePostBookingActions(message, res, session, visitorId);
 
       case "free_trial_update":
-        console.log("🔥 [FREE TRIAL] Handling free_trial_update step");
         return handleUpdateInformation(message, res, session, visitorId);
 
       case "free_trial_cancel":
-        console.log("🔥 [FREE TRIAL] Handling free_trial_cancel step");
         return handleCancelBooking(message, res, session, visitorId);
 
       default:
-        console.log(
-          "🔥 [FREE TRIAL] Unknown step:",
-          session.visitorStep,
-          ", starting over"
-        );
         session.visitorStep = "free_trial";
         sessionStore.set(visitorId, session);
         return handleFreeTrialStart("", res, session, visitorId);
@@ -587,14 +530,8 @@ exports.handleFreeTrial = (message, res, session, visitorId) => {
 
 // Start of free trial booking flow
 function handleFreeTrialStart(message, res, session, visitorId) {
-  console.log(
-    "🔥 [FREE TRIAL] handleFreeTrialStart called with message:",
-    message
-  );
-
   session.visitorStep = "free_trial_name";
   sessionStore.set(visitorId, session);
-  console.log("🔥 [FREE TRIAL] Session step set to free_trial_name");
 
   const response = {
     platform: "ZOHOSALESIQ",
@@ -607,17 +544,11 @@ function handleFreeTrialStart(message, res, session, visitorId) {
     suggestions: ["⬅️ Back to Main Menu"],
   };
 
-  console.log(
-    "🔥 [FREE TRIAL] Sending response:",
-    JSON.stringify(response, null, 2)
-  );
   return res.json(response);
 }
 
 // Handle name input
 function handleNameInput(message, res, session, visitorId) {
-  console.log("🔥 [FREE TRIAL] handleNameInput called with message:", message);
-
   // If this is the first time entering this step (message is "Book Free Trial")
   if (message === "Book Free Trial") {
     const response = {
@@ -630,10 +561,7 @@ function handleNameInput(message, res, session, visitorId) {
       },
       suggestions: ["⬅️ Back to Main Menu"],
     };
-    console.log(
-      "🔥 [FREE TRIAL] Sending response:",
-      JSON.stringify(response, null, 2)
-    );
+
     return res.json(response);
   }
 
@@ -649,10 +577,7 @@ function handleNameInput(message, res, session, visitorId) {
       },
       suggestions: ["⬅️ Back to Main Menu"],
     };
-    console.log(
-      "🔥 [FREE TRIAL] Sending response:",
-      JSON.stringify(response, null, 2)
-    );
+
     return res.json(response);
   }
 
@@ -660,7 +585,6 @@ function handleNameInput(message, res, session, visitorId) {
   session.freeTrialData.name = message.trim();
   session.visitorStep = "free_trial_email";
   sessionStore.set(visitorId, session);
-  console.log("🔥 [FREE TRIAL] Name stored:", session.freeTrialData.name);
 
   const response = {
     action: "reply",
@@ -675,17 +599,11 @@ function handleNameInput(message, res, session, visitorId) {
     suggestions: ["⬅️ Back to Main Menu"],
   };
 
-  console.log(
-    "🔥 [FREE TRIAL] Sending response:",
-    JSON.stringify(response, null, 2)
-  );
   return res.json(response);
 }
 
 // Handle email input
 function handleEmailInput(message, res, session, visitorId) {
-  console.log("🔥 [FREE TRIAL] handleEmailInput called with message:", message);
-
   // Simple email validation
   const emailRegex = /\S+@\S+\.\S+/;
   if (!emailRegex.test(message)) {
@@ -701,10 +619,7 @@ function handleEmailInput(message, res, session, visitorId) {
       },
       suggestions: ["⬅️ Back to Main Menu"],
     };
-    console.log(
-      "🔥 [FREE TRIAL] Sending response:",
-      JSON.stringify(response, null, 2)
-    );
+
     return res.json(response);
   }
 
@@ -714,8 +629,6 @@ function handleEmailInput(message, res, session, visitorId) {
   session.freeTrialData.emailOTP = emailOtp;
   session.visitorStep = "free_trial_phone";
   sessionStore.set(visitorId, session);
-  console.log("🔥 [FREE TRIAL] Email stored:", session.freeTrialData.email);
-  console.log("🔥 [FREE TRIAL] Generated email OTP:", emailOtp);
 
   // Send OTP via email
   const mailOptions = {
@@ -747,29 +660,18 @@ function handleEmailInput(message, res, session, visitorId) {
     suggestions: ["⬅️ Back to Main Menu"],
   };
 
-  console.log(
-    "🔥 [FREE TRIAL] Sending response:",
-    JSON.stringify(response, null, 2)
-  );
   return res.json(response);
 }
 
 // Handle phone input
 function handlePhoneInput(message, res, session, visitorId) {
-  console.log("🔥 [FREE TRIAL] handlePhoneInput called with message:", message);
-
   // Clean the phone number by removing all non-digit characters
   const cleanPhone = message.replace(/\D/g, "");
-  console.log("🔥 [FREE TRIAL] Cleaned phone:", cleanPhone);
 
   // Remove '91' country code if present at the beginning
   let finalPhone = cleanPhone;
   if (cleanPhone.startsWith("91") && cleanPhone.length > 10) {
     finalPhone = cleanPhone.substring(2);
-    console.log(
-      "🔥 [FREE TRIAL] Final phone after removing country code:",
-      finalPhone
-    );
   }
 
   // Phone validation (exactly 10 digits after cleaning)
@@ -788,10 +690,7 @@ function handlePhoneInput(message, res, session, visitorId) {
       },
       suggestions: ["⬅️ Back to Main Menu"],
     };
-    console.log(
-      "🔥 [FREE TRIAL] Sending response:",
-      JSON.stringify(response, null, 2)
-    );
+
     return res.json(response);
   }
 
@@ -799,7 +698,6 @@ function handlePhoneInput(message, res, session, visitorId) {
   session.freeTrialData.phone = finalPhone;
   session.visitorStep = "free_trial_email_otp";
   sessionStore.set(visitorId, session);
-  console.log("🔥 [FREE TRIAL] Phone stored:", session.freeTrialData.phone);
 
   const response = {
     action: "reply",
@@ -809,20 +707,11 @@ function handlePhoneInput(message, res, session, visitorId) {
     suggestions: ["⬅️ Back to Main Menu"],
   };
 
-  console.log(
-    "🔥 [FREE TRIAL] Sending response:",
-    JSON.stringify(response, null, 2)
-  );
   return res.json(response);
 }
 
 // Handle email OTP verification
 function handleEmailOTPVerification(message, res, session, visitorId) {
-  console.log(
-    "🔥 [FREE TRIAL] handleEmailOTPVerification called with message:",
-    message
-  );
-
   // Check if OTP matches (allow 12345 for testing)
   if (message !== session.freeTrialData.emailOTP && message !== "12345") {
     const response = {
@@ -830,10 +719,7 @@ function handleEmailOTPVerification(message, res, session, visitorId) {
       replies: ["Invalid OTP. Please try again (Use 12345 for testing):"],
       suggestions: ["⬅️ Back to Main Menu"],
     };
-    console.log(
-      "🔥 [FREE TRIAL] Sending response:",
-      JSON.stringify(response, null, 2)
-    );
+
     return res.json(response);
   }
 
@@ -841,9 +727,6 @@ function handleEmailOTPVerification(message, res, session, visitorId) {
   session.freeTrialData.emailVerified = true;
   session.visitorStep = "free_trial_datetime";
   sessionStore.set(visitorId, session);
-  console.log(
-    "🔥 [FREE TRIAL] Email OTP verified, moving to date/time selection"
-  );
 
   // Generate time slots for the next 5 days
   const slots = generateTimeSlots();
@@ -864,10 +747,6 @@ function handleEmailOTPVerification(message, res, session, visitorId) {
     suggestions: ["⬅️ Back to Main Menu"],
   };
 
-  console.log(
-    "🔥 [FREE TRIAL] Sending response:",
-    JSON.stringify(response, null, 2)
-  );
   return res.json(response);
 }
 
@@ -925,11 +804,6 @@ function generateTimeSlots() {
 
 // Handle date/time selection
 function handleDateTimeSelection(message, res, session, visitorId) {
-  console.log(
-    "🔥 [FREE TRIAL] handleDateTimeSelection called with message:",
-    message
-  );
-
   // If the user sends a text message instead of using the date-timeslots
   if (
     typeof message === "string" &&
@@ -960,12 +834,6 @@ function handleDateTimeSelection(message, res, session, visitorId) {
     typeof message === "string" &&
     (message.includes("at") || message.includes("GMT"))
   ) {
-    // This is a date-time string that should have been processed in the main function
-    // Let's try to process it again here
-    console.log(
-      "🔥 [FREE TRIAL] Processing date-time string in handleDateTimeSelection"
-    );
-
     // Parse the formatted date string
     const dateMatch = message.match(
       /(\w+), (\w+) (\d+), (\d+) at (\d+):(\d+) ([AP]M)/
@@ -1057,16 +925,10 @@ function handleDateTimeSelection(message, res, session, visitorId) {
 
 // Handle personal training option
 function handlePersonalTrainingOption(message, res, session, visitorId) {
-  console.log(
-    "🔥 [FREE TRIAL] handlePersonalTrainingOption called with message:",
-    message
-  );
-
   if (message === "Yes") {
     session.freeTrialData.personalTraining = true;
     session.visitorStep = "free_trial_trainer_selection";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [FREE TRIAL] Personal training set to Yes");
 
     const response = {
       action: "reply",
@@ -1080,19 +942,12 @@ function handlePersonalTrainingOption(message, res, session, visitorId) {
       ],
     };
 
-    console.log(
-      "🔥 [FREE TRIAL] Sending response:",
-      JSON.stringify(response, null, 2)
-    );
     return res.json(response);
   } else if (message === "No") {
     session.freeTrialData.personalTraining = false;
     session.freeTrialData.trainer = null;
     session.visitorStep = "free_trial_confirmation";
     sessionStore.set(visitorId, session);
-    console.log(
-      "🔥 [FREE TRIAL] Personal training set to No, moving to confirmation"
-    );
 
     return showBookingSummary(res, session, visitorId);
   } else {
@@ -1102,31 +957,18 @@ function handlePersonalTrainingOption(message, res, session, visitorId) {
       suggestions: ["Yes", "No", "⬅️ Back to Main Menu"],
     };
 
-    console.log(
-      "🔥 [FREE TRIAL] Sending response:",
-      JSON.stringify(response, null, 2)
-    );
     return res.json(response);
   }
 }
 
 // Handle trainer selection - COMPLETE FIXED VERSION
 async function handleTrainerSelection(message, res, session, visitorId) {
-  console.log(
-    "🔥 [FREE TRIAL] handleTrainerSelection called with message:",
-    message
-  );
-  console.log("🔥 [FREE TRIAL] Message type:", typeof message);
-
   // Check #1 - If trainer is already selected, skip to confirmation
   if (
     session.freeTrialData.trainer &&
     message !== "See All Trainers" &&
     message !== "Get Recommendation"
   ) {
-    console.log(
-      "🔥 [FREE TRIAL] Trainer already selected, moving to confirmation"
-    );
     session.visitorStep = "free_trial_confirmation";
     sessionStore.set(visitorId, session);
     return showBookingSummary(res, session, visitorId);
@@ -1143,14 +985,8 @@ async function handleTrainerSelection(message, res, session, visitorId) {
       "Confirm Booking",
     ].includes(message)
   ) {
-    console.log(
-      "🔥 [FREE TRIAL] Detected trainer selection from dropdown:",
-      message
-    );
-
     try {
       const trainerName = message.split(" - ")[0].trim();
-      console.log("🔥 [FREE TRIAL] Extracted trainer name:", trainerName);
 
       const trainer = await Trainer.findOne({ name: trainerName });
 
@@ -1167,14 +1003,6 @@ async function handleTrainerSelection(message, res, session, visitorId) {
           suggestions: ["See All Trainers", "⬅️ Back to Main Menu"],
         });
       }
-
-      console.log(
-        "🔥 [FREE TRIAL] Trainer found:",
-        trainer.name,
-        "ID:",
-        trainer._id
-      );
-
       session.freeTrialData.trainer = {
         id: trainer._id.toString(),
         name: trainer.name,
@@ -1183,7 +1011,6 @@ async function handleTrainerSelection(message, res, session, visitorId) {
       };
       session.visitorStep = "free_trial_confirmation";
       sessionStore.set(visitorId, session);
-      console.log("🔥 [FREE TRIAL] Trainer stored, moving to booking summary");
 
       return showBookingSummary(res, session, visitorId);
     } catch (error) {
@@ -1200,11 +1027,8 @@ async function handleTrainerSelection(message, res, session, visitorId) {
 
   // Handle "See All Trainers"
   if (message === "See All Trainers") {
-    console.log("🔥 [FREE TRIAL] User selected 'See All Trainers'");
-
     try {
       const trainers = await Trainer.find();
-      console.log("🔥 [FREE TRIAL] Found trainers:", trainers.length);
 
       if (trainers.length === 0) {
         return res.json({
@@ -1252,8 +1076,6 @@ async function handleTrainerSelection(message, res, session, visitorId) {
         suggestions: ["⬅️ Back to Main Menu"],
       };
 
-      console.log("🔥 [FREE TRIAL] Sending trainer cards and dropdown");
-      console.log("🔥 [FREE TRIAL] Number of trainer cards:", trainers.length);
       return res.json(payload);
     } catch (error) {
       console.error("🔥 [FREE TRIAL] Error fetching trainers:", error);
@@ -1269,7 +1091,6 @@ async function handleTrainerSelection(message, res, session, visitorId) {
 
   // Handle "Get Recommendation"
   if (message === "Get Recommendation") {
-    console.log("🔥 [FREE TRIAL] User selected 'Get Recommendation'");
     session.visitorStep = "free_trial_trainer_specialization";
     sessionStore.set(visitorId, session);
     return handleTrainerSpecialization("", res, session, visitorId);
@@ -1279,7 +1100,7 @@ async function handleTrainerSelection(message, res, session, visitorId) {
   if (message === "Confirm Booking") {
     session.visitorStep = "free_trial_confirmation";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [FREE TRIAL] Trainer confirmed, moving to booking summary");
+
     return showBookingSummary(res, session, visitorId);
   }
 
@@ -1289,7 +1110,7 @@ async function handleTrainerSelection(message, res, session, visitorId) {
   }
 
   // Default case
-  console.log("🔥 [FREE TRIAL] Showing trainer selection options");
+
   return res.json({
     action: "reply",
     replies: ["Please select a valid option:"],
@@ -1303,18 +1124,12 @@ async function handleTrainerSelection(message, res, session, visitorId) {
 
 // Handle trainer specialization
 async function handleTrainerSpecialization(message, res, session, visitorId) {
-  console.log(
-    "🔥 [FREE TRIAL] handleTrainerSpecialization called with message:",
-    message
-  );
-  console.log("🔥 [FREE TRIAL] Message type:", typeof message);
-
   // Check if user selected "Select This Trainer"
   if (message === "Select This Trainer") {
     if (session.freeTrialData.trainer) {
       session.visitorStep = "free_trial_confirmation";
       sessionStore.set(visitorId, session);
-      console.log("🔥 [FREE TRIAL] Trainer selected, moving to confirmation");
+
       return showBookingSummary(res, session, visitorId);
     } else {
       return res.json({
@@ -1344,17 +1159,12 @@ async function handleTrainerSpecialization(message, res, session, visitorId) {
     ].includes(message)
   ) {
     const specialization = message.toLowerCase().trim();
-    console.log("🔥 [FREE TRIAL] Selected specialization:", specialization);
 
     try {
       // Find a trainer with the specified specialization
       const trainers = await Trainer.find({
         specialization: { $regex: specialization, $options: "i" },
       });
-      console.log(
-        "🔥 [FREE TRIAL] Found trainers with specialization:",
-        trainers.length
-      );
 
       if (trainers.length === 0) {
         return res.json({
@@ -1368,7 +1178,6 @@ async function handleTrainerSpecialization(message, res, session, visitorId) {
 
       // Get the first matching trainer
       const trainer = trainers[0];
-      console.log("🔥 [FREE TRIAL] Selected trainer:", trainer.name);
 
       // Store trainer in session immediately
       session.freeTrialData.trainer = {
@@ -1378,7 +1187,6 @@ async function handleTrainerSpecialization(message, res, session, visitorId) {
         experience: trainer.experience,
       };
       sessionStore.set(visitorId, session);
-      console.log("🔥 [FREE TRIAL] Trainer stored in session");
 
       // Create trainer widget
       const trainerWidget = {
@@ -1414,7 +1222,6 @@ async function handleTrainerSpecialization(message, res, session, visitorId) {
   try {
     // Fetch all distinct specializations from trainers
     const specializations = await Trainer.distinct("specialization");
-    console.log("🔥 [FREE TRIAL] Available specializations:", specializations);
 
     if (specializations.length === 0) {
       return res.json({
@@ -1457,9 +1264,6 @@ async function handleTrainerSpecialization(message, res, session, visitorId) {
 
 // Show booking summary
 function showBookingSummary(res, session, visitorId) {
-  console.log("🔥 [FREE TRIAL] showBookingSummary called");
-  console.log("🔥 [FREE TRIAL] Session data:", session.freeTrialData);
-
   let summary = "Please confirm your free trial booking details:\n\n";
   summary += `Name: ${session.freeTrialData.name}\n`;
   summary += `Email: ${session.freeTrialData.email}\n`;
@@ -1495,7 +1299,6 @@ function showBookingSummary(res, session, visitorId) {
 
   session.visitorStep = "free_trial_confirmation";
   sessionStore.set(visitorId, session);
-  console.log("🔥 [FREE TRIAL] Session step set to confirmation");
 
   const response = {
     action: "reply",
@@ -1503,35 +1306,17 @@ function showBookingSummary(res, session, visitorId) {
     suggestions: ["Confirm", "⬅️ Back to Main Menu"],
   };
 
-  console.log(
-    "🔥 [FREE TRIAL] Sending response:",
-    JSON.stringify(response, null, 2)
-  );
   return res.json(response);
 }
 
 // Handle booking confirmation
 async function handleBookingConfirmation(message, res, session, visitorId) {
-  console.log(
-    "🔥 [FREE TRIAL] handleBookingConfirmation called with message:",
-    message
-  );
-
   if (message === "Confirm") {
     try {
       // Generate booking ID
       session.freeTrialData.confirmed = true;
       session.freeTrialData.bookingId = "FT" + Date.now();
 
-      console.log(
-        "🔥 [FREE TRIAL] Booking confirmed with ID:",
-        session.freeTrialData.bookingId
-      );
-
-      // 🎯 CREATE GOOGLE CALENDAR EVENT
-      console.log("📅 [FREE TRIAL] Creating Google Calendar event...");
-
-      // Around line 1189 - Replace the try-catch block
       try {
         const calendarResult =
           await googleCalendarController.createFreeTrialEvent({
@@ -1548,11 +1333,6 @@ async function handleBookingConfirmation(message, res, session, visitorId) {
 
         session.freeTrialData.calendarEventId = calendarResult.eventId;
         session.freeTrialData.calendarEventLink = calendarResult.eventLink;
-
-        console.log(
-          "✅ [FREE TRIAL] Calendar event created:",
-          calendarResult.eventId
-        );
       } catch (calendarError) {
         console.error(
           "❌ [FREE TRIAL] Failed to create calendar event:",
@@ -1592,10 +1372,6 @@ async function handleBookingConfirmation(message, res, session, visitorId) {
         ],
       };
 
-      console.log(
-        "🔥 [FREE TRIAL] Sending response:",
-        JSON.stringify(response, null, 2)
-      );
       return res.json(response);
     } catch (error) {
       console.error("🔥 [FREE TRIAL] Error in booking confirmation:", error);
@@ -1614,25 +1390,15 @@ async function handleBookingConfirmation(message, res, session, visitorId) {
       suggestions: ["Confirm", "⬅️ Back to Main Menu"],
     };
 
-    console.log(
-      "🔥 [FREE TRIAL] Sending response:",
-      JSON.stringify(response, null, 2)
-    );
     return res.json(response);
   }
 }
 
 // Handle post-booking actions
 function handlePostBookingActions(message, res, session, visitorId) {
-  console.log(
-    "🔥 [FREE TRIAL] handlePostBookingActions called with message:",
-    message
-  );
-
   if (message === "Update Information") {
     session.visitorStep = "free_trial_update";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [FREE TRIAL] Session step set to update");
 
     const response = {
       action: "reply",
@@ -1646,15 +1412,10 @@ function handlePostBookingActions(message, res, session, visitorId) {
       ],
     };
 
-    console.log(
-      "🔥 [FREE TRIAL] Sending response:",
-      JSON.stringify(response, null, 2)
-    );
     return res.json(response);
   } else if (message === "Cancel Free Trial") {
     session.visitorStep = "free_trial_cancel";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [FREE TRIAL] Session step set to cancel");
 
     const response = {
       action: "reply",
@@ -1662,13 +1423,8 @@ function handlePostBookingActions(message, res, session, visitorId) {
       suggestions: ["Yes", "No", "⬅️ Back to Main Menu"],
     };
 
-    console.log(
-      "🔥 [FREE TRIAL] Sending response:",
-      JSON.stringify(response, null, 2)
-    );
     return res.json(response);
   } else {
-    console.log("🔥 [FREE TRIAL] Invalid option selected:", message);
     const response = {
       action: "reply",
       replies: ["Please select a valid option:"],
@@ -1679,30 +1435,15 @@ function handlePostBookingActions(message, res, session, visitorId) {
       ],
     };
 
-    console.log(
-      "🔥 [FREE TRIAL] Sending response:",
-      JSON.stringify(response, null, 2)
-    );
     return res.json(response);
   }
 }
 
 // Handle update information
 function handleUpdateInformation(message, res, session, visitorId) {
-  console.log(
-    "🔥 [FREE TRIAL] handleUpdateInformation called with message:",
-    message
-  );
-
   // If we are waiting for a value to update (i.e., fieldToUpdate is set)
   if (session.freeTrialData.fieldToUpdate) {
     const field = session.freeTrialData.fieldToUpdate;
-    console.log(
-      "🔥 [FREE TRIAL] Updating field:",
-      field,
-      "with value:",
-      message
-    );
 
     // Validate and update the field
     switch (field) {
@@ -1768,7 +1509,7 @@ function handleUpdateInformation(message, res, session, visitorId) {
 
       case "date & time":
         // This should have been handled by the date-timeslots input, so we shouldn't get here
-        console.log("🔥 [FREE TRIAL] Unexpected date/time update in text form");
+
         break;
     }
 
@@ -1782,12 +1523,10 @@ function handleUpdateInformation(message, res, session, visitorId) {
 
   // Otherwise, we are selecting which field to update
   const fieldToUpdate = message.toLowerCase();
-  console.log("🔥 [FREE TRIAL] Field to update:", fieldToUpdate);
 
   if (["name", "email", "phone", "date & time"].includes(fieldToUpdate)) {
     session.freeTrialData.fieldToUpdate = fieldToUpdate;
     sessionStore.set(visitorId, session);
-    console.log("🔥 [FREE TRIAL] Field to update stored in session");
 
     if (fieldToUpdate === "date & time") {
       // Use date-timeslots for date/time updates
@@ -1807,10 +1546,6 @@ function handleUpdateInformation(message, res, session, visitorId) {
         suggestions: ["⬅️ Back to Main Menu"],
       };
 
-      console.log(
-        "🔥 [FREE TRIAL] Sending date-timeslots response:",
-        JSON.stringify(response, null, 2)
-      );
       return res.json(response);
     } else {
       let prompt = "";
@@ -1863,14 +1598,9 @@ function handleUpdateInformation(message, res, session, visitorId) {
 
       response.suggestions = ["⬅️ Back to Main Menu"];
 
-      console.log(
-        "🔥 [FREE TRIAL] Sending response:",
-        JSON.stringify(response, null, 2)
-      );
       return res.json(response);
     }
   } else {
-    console.log("🔥 [FREE TRIAL] Invalid field to update:", fieldToUpdate);
     const response = {
       action: "reply",
       replies: ["Please select a valid field to update:"],
@@ -1883,34 +1613,21 @@ function handleUpdateInformation(message, res, session, visitorId) {
       ],
     };
 
-    console.log(
-      "🔥 [FREE TRIAL] Sending response:",
-      JSON.stringify(response, null, 2)
-    );
     return res.json(response);
   }
 }
 
 // Handle cancel booking
 async function handleCancelBooking(message, res, session, visitorId) {
-  console.log(
-    "🔥 [FREE TRIAL] handleCancelBooking called with message:",
-    message
-  );
-
   if (message === "Yes") {
     try {
       // 🎯 DELETE GOOGLE CALENDAR EVENT
       if (session.freeTrialData.calendarEventId) {
-        console.log("📅 [FREE TRIAL] Cancelling Google Calendar event...");
-
         try {
           await googleCalendarController.cancelFreeTrialEvent(
             session.freeTrialData.calendarEventId,
             session.freeTrialData.email
           );
-
-          console.log("✅ [FREE TRIAL] Calendar event cancelled successfully");
         } catch (calendarError) {
           console.error(
             "❌ [FREE TRIAL] Failed to cancel calendar event:",
@@ -1923,7 +1640,6 @@ async function handleCancelBooking(message, res, session, visitorId) {
       // Mark the booking as cancelled
       session.freeTrialData.cancelled = true;
       sessionStore.set(visitorId, session);
-      console.log("🔥 [FREE TRIAL] Booking cancelled");
 
       // Send booking cancellation email
       sendBookingCancellationEmail(session);
@@ -1937,10 +1653,6 @@ async function handleCancelBooking(message, res, session, visitorId) {
         suggestions: ["⬅️ Back to Main Menu"],
       };
 
-      console.log(
-        "🔥 [FREE TRIAL] Sending cancellation confirmation:",
-        JSON.stringify(response, null, 2)
-      );
       return res.json(response);
     } catch (error) {
       console.error("🔥 [FREE TRIAL] Error in handleCancelBooking:", error);
@@ -1955,9 +1667,6 @@ async function handleCancelBooking(message, res, session, visitorId) {
   } else if (message === "No") {
     session.visitorStep = "free_trial_booked";
     sessionStore.set(visitorId, session);
-    console.log(
-      "🔥 [FREE TRIAL] Cancellation cancelled, returning to booked state"
-    );
 
     const response = {
       action: "reply",
@@ -1971,37 +1680,23 @@ async function handleCancelBooking(message, res, session, visitorId) {
       ],
     };
 
-    console.log(
-      "🔥 [FREE TRIAL] Sending response:",
-      JSON.stringify(response, null, 2)
-    );
     return res.json(response);
   } else {
-    console.log("🔥 [FREE TRIAL] Invalid option selected:", message);
     const response = {
       action: "reply",
       replies: ["Please select a valid option:"],
       suggestions: ["Yes", "No", "⬅️ Back to Main Menu"],
     };
 
-    console.log(
-      "🔥 [FREE TRIAL] Sending response:",
-      JSON.stringify(response, null, 2)
-    );
     return res.json(response);
   }
 }
 
 // New function to show updated booking summary
 async function showUpdatedBookingSummary(res, session, visitorId) {
-  console.log("🔥 [FREE TRIAL] showUpdatedBookingSummary called");
-  console.log("🔥 [FREE TRIAL] Session data:", session.freeTrialData);
-
   try {
     // 🎯 UPDATE GOOGLE CALENDAR EVENT
     if (session.freeTrialData.calendarEventId) {
-      console.log("📅 [FREE TRIAL] Updating Google Calendar event...");
-
       try {
         await googleCalendarController.updateFreeTrialEvent(
           session.freeTrialData.calendarEventId,
@@ -2017,8 +1712,6 @@ async function showUpdatedBookingSummary(res, session, visitorId) {
             timeZone: "Asia/Kolkata",
           }
         );
-
-        console.log("✅ [FREE TRIAL] Calendar event updated successfully");
       } catch (calendarError) {
         console.error(
           "❌ [FREE TRIAL] Failed to update calendar event:",
@@ -2063,7 +1756,6 @@ async function showUpdatedBookingSummary(res, session, visitorId) {
 
     session.visitorStep = "free_trial_booked";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [FREE TRIAL] Session step set to free_trial_booked");
 
     // Send booking update email
     sendBookingUpdateEmail(session);
@@ -2081,10 +1773,6 @@ async function showUpdatedBookingSummary(res, session, visitorId) {
       ],
     };
 
-    console.log(
-      "🔥 [FREE TRIAL] Sending response:",
-      JSON.stringify(response, null, 2)
-    );
     return res.json(response);
   } catch (error) {
     console.error("🔥 [FREE TRIAL] Error in showUpdatedBookingSummary:", error);

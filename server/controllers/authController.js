@@ -9,16 +9,12 @@ exports.askEmail = (req, res, visitorId, message, session) => {
 
   sessionStore.set(visitorId, { email: message });
 
-  console.log("📌 Email saved:", sessionStore.get(visitorId));
-
   return sendZobotReply(res, "Email received! Please enter OTP:");
 };
 
 // STEP 2 → OTP Verification
 exports.verifyOtp = async (req, res, visitorId, message, session) => {
   sessionStore.set(visitorId, { role: "member" });
-
-  console.log("📌 OTP Verified. Updated session:", sessionStore.get(visitorId));
 
   return sendZobotReply(res, "OTP verified! Opening member dashboard...");
 };

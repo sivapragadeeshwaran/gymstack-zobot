@@ -22,18 +22,13 @@ function generateRandomPassword(length = 8) {
 }
 
 exports.handleAdmin = (message, res, session, visitorId) => {
-  console.log("🔥 [ADMIN] handleAdmin called with message:", message);
-  console.log("🔥 [ADMIN] Current session step:", session.adminStep);
-
   // Initialize admin session if not already done
   if (!session.adminStep) {
-    console.log("🔥 [ADMIN] Initializing session to dashboard");
     session.adminStep = "dashboard";
     sessionStore.set(visitorId, session);
   }
 
   const msg = (message || "").toString().trim();
-  console.log("🔥 [ADMIN] Processed message:", msg);
 
   // Handle response to reminder email question
   if (session.adminStep === "expiringMembers_reminder") {
@@ -54,41 +49,32 @@ exports.handleAdmin = (message, res, session, visitorId) => {
   }
 
   if (session.adminStep === "dashboard") {
-    console.log("🔥 [ADMIN] Dashboard step, checking message:", msg);
     switch (msg) {
       case "➕ Add Member":
-        console.log("🔥 [ADMIN] Add Member selected, starting form flow");
         session.adminStep = "addMember_name";
         sessionStore.set(visitorId, session);
         return handleAddMemberForm("", res, session, visitorId);
       case "🏋️ Add Trainer":
-        console.log("🔥 [ADMIN] Add Trainer selected");
         session.adminStep = "addTrainer_name";
         sessionStore.set(visitorId, session);
         return handleAddTrainer("", res, session, visitorId);
       case "🔑 Add Admin":
-        console.log("🔥 [ADMIN] Add Admin selected");
         session.adminStep = "addAdmin_name";
         sessionStore.set(visitorId, session);
         return handleAddAdmin("", res, session, visitorId);
       case "💳 Add New Membership":
-        console.log("🔥 [ADMIN] Add New Membership selected");
         session.adminStep = "addMembership_name";
         sessionStore.set(visitorId, session);
         return handleAddMembership("", res, session, visitorId);
       case "⏰ Expiring Members":
-        console.log("🔥 [ADMIN] Expiring Members selected");
         session.adminStep = "expiringMembers";
         sessionStore.set(visitorId, session);
         return handleExpiringMembers(res, session, visitorId);
       case "📊 View Reports":
-        console.log("🔥 [ADMIN] View Reports selected");
         return handleViewReports(res, session, visitorId);
       case "⬅️ Back to Dashboard":
-        console.log("🔥 [ADMIN] Back to Dashboard selected");
         return showAdminDashboard(res, session, visitorId);
       default:
-        console.log("🔥 [ADMIN] Unknown dashboard option, showing dashboard");
         return showAdminDashboard(res, session, visitorId);
     }
   }
@@ -127,7 +113,6 @@ exports.handleAdmin = (message, res, session, visitorId) => {
       return handleAddMembership(msg, res, session, visitorId);
 
     default:
-      console.log("🔥 [ADMIN] Unknown step, falling back to dashboard");
       // fallback to dashboard
       session.adminStep = "dashboard";
       sessionStore.set(visitorId, session);
@@ -137,8 +122,6 @@ exports.handleAdmin = (message, res, session, visitorId) => {
 
 // ----------------------- Dashboard -----------------------
 function showAdminDashboard(res, session, visitorId) {
-  console.log("🔥 [ADMIN] Showing dashboard");
-
   const greeting = `👋 Welcome Admin ${
     session.username || ""
   }! Here's your dashboard:`;
@@ -161,71 +144,50 @@ function showAdminDashboard(res, session, visitorId) {
   session.adminStep = "dashboard";
   sessionStore.set(visitorId, session);
 
-  console.log(
-    "🔥 [ADMIN] Dashboard payload:",
-    JSON.stringify(payload, null, 2)
-  );
-
   // Zoho will send back the chosen suggestion as message text
   return res.json(payload);
 }
 
 // ----------------------- View Reports Navigation -----------------------
 function handleViewReportsNavigation(message, res, session, visitorId) {
-  console.log(
-    "🔥 [ADMIN] View Reports navigation called with message:",
-    message
-  );
-
   switch (message) {
     case "➕ Add Member":
-      console.log("🔥 [ADMIN] Add Member selected from reports");
       session.adminStep = "addMember_name";
       sessionStore.set(visitorId, session);
       return handleAddMemberForm("", res, session, visitorId);
 
     case "🏋️ Add Trainer":
-      console.log("🔥 [ADMIN] Add Trainer selected from reports");
       session.adminStep = "addTrainer_name";
       sessionStore.set(visitorId, session);
       return handleAddTrainer("", res, session, visitorId);
 
     case "🔑 Add Admin":
-      console.log("🔥 [ADMIN] Add Admin selected from reports");
       session.adminStep = "addAdmin_name";
       sessionStore.set(visitorId, session);
       return handleAddAdmin("", res, session, visitorId);
 
     case "💳 Add New Membership":
-      console.log("🔥 [ADMIN] Add New Membership selected from reports");
       session.adminStep = "addMembership_name";
       sessionStore.set(visitorId, session);
       return handleAddMembership("", res, session, visitorId);
 
     case "⏰ Expiring Members":
-      console.log("🔥 [ADMIN] Expiring Members selected from reports");
       session.adminStep = "expiringMembers";
       sessionStore.set(visitorId, session);
       return handleExpiringMembers(res, session, visitorId);
 
     case "⬅️ Back to Dashboard":
-      console.log("🔥 [ADMIN] Back to Dashboard selected from reports");
       session.adminStep = "dashboard";
       sessionStore.set(visitorId, session);
       return showAdminDashboard(res, session, visitorId);
 
     default:
-      console.log(
-        "🔥 [ADMIN] Unknown navigation option, showing reports again"
-      );
       return handleViewReports(res, session, visitorId);
   }
 }
 
 // ----------------------- Expiring Members -----------------------
 async function handleExpiringMembers(res, session, visitorId) {
-  console.log("🔥 [ADMIN] Expiring members called");
-
   try {
     // Get current date
     const today = new Date();
@@ -237,13 +199,6 @@ async function handleExpiringMembers(res, session, visitorId) {
 
     const dayAfterTomorrow = new Date(today);
     dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
-
-    console.log("🔥 [ADMIN] Today:", today.toISOString());
-    console.log("🔥 [ADMIN] Tomorrow:", tomorrow.toISOString());
-    console.log(
-      "🔥 [ADMIN] Day after tomorrow:",
-      dayAfterTomorrow.toISOString()
-    );
 
     // Find users with expired memberships
     const expiredMembers = await User.find({
@@ -268,10 +223,6 @@ async function handleExpiringMembers(res, session, visitorId) {
         $lt: dayAfterTomorrow,
       },
     }).populate("membershipPlan");
-
-    console.log("🔥 [ADMIN] Expired members count:", expiredMembers.length);
-    console.log("🔥 [ADMIN] Expiring in 1 day count:", expiringIn1Day.length);
-    console.log("🔥 [ADMIN] Expiring in 2 days count:", expiringIn2Days.length);
 
     // Prepare the response as a single string
     let reportContent = "⏰ MEMBERSHIP EXPIRY REPORT\n\n";
@@ -338,10 +289,6 @@ async function handleExpiringMembers(res, session, visitorId) {
       suggestions: ["Yes", "No"],
     };
 
-    console.log(
-      "🔥 [ADMIN] Expiring members payload:",
-      JSON.stringify(payload, null, 2)
-    );
     return res.json(payload);
   } catch (error) {
     console.error("🔥 [ADMIN] Error fetching expiring members:", error);
@@ -368,8 +315,6 @@ async function handleExpiringMembers(res, session, visitorId) {
 
 // ----------------------- Handle Reminder Response -----------------------
 async function handleReminderResponse(message, res, session, visitorId) {
-  console.log("🔥 [ADMIN] Handling reminder response:", message);
-
   if (message === "Yes") {
     // Immediately respond that the process has started
     const initialResponse = {
@@ -400,8 +345,6 @@ async function handleReminderResponse(message, res, session, visitorId) {
       .then((result) => {
         // Log the result, but we cannot send another response to the same request
         console.log("🔥 [ADMIN] Email sending completed:", result);
-        // We could consider storing the result in the session or database for later retrieval
-        // Or we could use a WebSocket or push notification to inform the admin, but that's beyond the current scope
       })
       .catch((error) => {
         console.error("🔥 [ADMIN] Error sending reminder emails:", error);
@@ -427,22 +370,15 @@ async function handleReminderResponse(message, res, session, visitorId) {
 
 // ----------------------- Add Membership Flow -----------------------
 async function handleAddMembership(message, res, session, visitorId) {
-  console.log("🔥 [ADMIN] Add membership flow called with message:", message);
-  console.log("🔥 [ADMIN] Current step:", session.adminStep);
-
   // Initialize form data if not exists
   if (!session.membershipData) {
     session.membershipData = {};
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Initialized membership form data");
   }
 
   // Step 1: Membership Name
   if (session.adminStep === "addMembership_name") {
-    console.log("🔥 [ADMIN] Membership name step");
-
     if (!message) {
-      console.log("🔥 [ADMIN] No message, showing name prompt");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -460,12 +396,10 @@ async function handleAddMembership(message, res, session, visitorId) {
     let nameValue = message;
     if (message && typeof message === "object" && message.value) {
       nameValue = message.value;
-      console.log("🔥 [ADMIN] Extracted name value from object:", nameValue);
     }
 
     // Validate name
     if (!nameValue || nameValue.trim().length < 2) {
-      console.log("🔥 [ADMIN] Invalid name");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -485,7 +419,6 @@ async function handleAddMembership(message, res, session, visitorId) {
     session.membershipData.name = nameValue;
     session.adminStep = "addMembership_period";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Name stored, moving to period step");
 
     // Show period options
     return res.json({
@@ -510,24 +443,17 @@ async function handleAddMembership(message, res, session, visitorId) {
 
   // Step 2: Period
   if (session.adminStep === "addMembership_period") {
-    console.log("🔥 [ADMIN] Membership period step");
-
     // Process the selected period
     let periodValue = message;
 
     // Handle different response formats from Zoho
     if (message && typeof message === "object" && message.value) {
       periodValue = message.value;
-      console.log(
-        "🔥 [ADMIN] Extracted period value from object:",
-        periodValue
-      );
     }
 
     // Validate that a period is selected
     const validPeriods = ["1 Month", "3 Months", "6 Months", "12 Months"];
     if (!validPeriods.includes(periodValue)) {
-      console.log("🔥 [ADMIN] Invalid period selected:", periodValue);
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -552,7 +478,6 @@ async function handleAddMembership(message, res, session, visitorId) {
     session.membershipData.period = periodValue;
     session.adminStep = "addMembership_price";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Period stored, moving to price step");
 
     // Show price input
     return res.json({
@@ -564,11 +489,8 @@ async function handleAddMembership(message, res, session, visitorId) {
 
   // Step 3: Price
   if (session.adminStep === "addMembership_price") {
-    console.log("🔥 [ADMIN] Membership price step");
-
     // Check if message is empty
     if (!message || message.trim() === "") {
-      console.log("🔥 [ADMIN] Empty price input");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -580,7 +502,6 @@ async function handleAddMembership(message, res, session, visitorId) {
 
     // Check if input contains only numbers
     if (!/^\d+$/.test(message.trim())) {
-      console.log("🔥 [ADMIN] Non-numeric price input:", message);
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -593,7 +514,6 @@ async function handleAddMembership(message, res, session, visitorId) {
 
     // Validate price range
     if (isNaN(price) || price <= 0 || price > 100000) {
-      console.log("🔥 [ADMIN] Invalid price value:", price);
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -605,7 +525,6 @@ async function handleAddMembership(message, res, session, visitorId) {
     session.membershipData.price = price;
     session.adminStep = "addMembership_personalTraining";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Price stored, moving to personal training step");
 
     // Show personal training options
     return res.json({
@@ -618,10 +537,7 @@ async function handleAddMembership(message, res, session, visitorId) {
 
   // Step 4: Personal Training
   if (session.adminStep === "addMembership_personalTraining") {
-    console.log("🔥 [ADMIN] Personal training step");
-
     if (!["Yes", "No"].includes(message)) {
-      console.log("🔥 [ADMIN] Invalid personal training option");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -633,8 +549,6 @@ async function handleAddMembership(message, res, session, visitorId) {
     // Store personal training preference
     session.membershipData.includesPersonalTraining = message === "Yes";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Personal training preference stored");
-    console.log("🔥 [ADMIN] Form data complete:", session.membershipData);
 
     // Save to database
     try {
@@ -649,7 +563,6 @@ async function handleAddMembership(message, res, session, visitorId) {
 
       // Save the plan to the database
       const savedPlan = await newPlan.save();
-      console.log("🔥 [ADMIN] Membership plan saved to database:", savedPlan);
 
       // Prepare confirmation as a single string
       let confirmation = `✅ Membership plan "${session.membershipData.name}" has been added successfully!\n`;
@@ -664,7 +577,6 @@ async function handleAddMembership(message, res, session, visitorId) {
       const formData = session.membershipData;
       session.membershipData = null;
       sessionStore.set(visitorId, session);
-      console.log("🔥 [ADMIN] Session reset to dashboard");
 
       return res.json({
         platform: "ZOHOSALESIQ",
@@ -713,7 +625,7 @@ async function handleAddMembership(message, res, session, visitorId) {
   }
 
   // Fallback
-  console.log("🔥 [ADMIN] Add membership flow fallback to dashboard");
+
   session.adminStep = "dashboard";
   sessionStore.set(visitorId, session);
   return showAdminDashboard(res, session, visitorId);
@@ -721,22 +633,15 @@ async function handleAddMembership(message, res, session, visitorId) {
 
 // ----------------------- Add Member Form (Step-by-Step) -----------------------
 async function handleAddMemberForm(message, res, session, visitorId) {
-  console.log("🔥 [ADMIN] Add member form called with message:", message);
-  console.log("🔥 [ADMIN] Current step:", session.adminStep);
-
   // Initialize form data if not exists
   if (!session.memberFormData) {
     session.memberFormData = {};
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Initialized form data");
   }
 
   // Step 1: Name
   if (session.adminStep === "addMember_name") {
-    console.log("🔥 [ADMIN] Name step");
-
     if (!message) {
-      console.log("🔥 [ADMIN] No message, showing name prompt");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -754,12 +659,10 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     let nameValue = message;
     if (message && typeof message === "object" && message.value) {
       nameValue = message.value;
-      console.log("🔥 [ADMIN] Extracted name value from object:", nameValue);
     }
 
     // Validate name
     if (!nameValue || nameValue.trim().length < 2) {
-      console.log("🔥 [ADMIN] Invalid name");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -777,7 +680,6 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     session.memberFormData.name = nameValue;
     session.adminStep = "addMember_email";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Name stored, moving to email step");
 
     // Show email input (email type is supported)
     return res.json({
@@ -796,11 +698,8 @@ async function handleAddMemberForm(message, res, session, visitorId) {
 
   // Step 2: Email
   if (session.adminStep === "addMember_email") {
-    console.log("🔥 [ADMIN] Email step");
-
     // Validate email
     if (!validateEmail(message)) {
-      console.log("🔥 [ADMIN] Invalid email");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -844,7 +743,6 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     session.memberFormData.email = message;
     session.adminStep = "addMember_dob";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Email stored, moving to DOB step");
 
     // Show DOB input as plain text (like name)
     return res.json({
@@ -856,11 +754,8 @@ async function handleAddMemberForm(message, res, session, visitorId) {
 
   // Step 3: Date of Birth
   if (session.adminStep === "addMember_dob") {
-    console.log("🔥 [ADMIN] DOB step, message received:", message);
-
     // If no message, show the prompt
     if (!message) {
-      console.log("🔥 [ADMIN] No message provided, showing DOB prompt");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -871,7 +766,6 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     // Validate DOB format (YYYY-MM-DD)
     const dobRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dobRegex.test(message)) {
-      console.log("🔥 [ADMIN] Invalid DOB format:", message);
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -888,7 +782,6 @@ async function handleAddMemberForm(message, res, session, visitorId) {
 
     // Basic validation for year (not in the future and not too far in the past)
     if (year > currentYear || year < currentYear - 120) {
-      console.log("🔥 [ADMIN] Invalid DOB year:", year);
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -898,7 +791,6 @@ async function handleAddMemberForm(message, res, session, visitorId) {
 
     // Basic validation for month (1-12)
     if (month < 1 || month > 12) {
-      console.log("🔥 [ADMIN] Invalid DOB month:", month);
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -908,7 +800,6 @@ async function handleAddMemberForm(message, res, session, visitorId) {
 
     // Basic validation for day (1-31)
     if (day < 1 || day > 31) {
-      console.log("🔥 [ADMIN] Invalid DOB day:", day);
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -920,7 +811,6 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     session.memberFormData.dob = message;
     session.adminStep = "addMember_phone";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] DOB stored:", message, "moving to phone step");
 
     // Show phone input with telephone type
     return res.json({
@@ -941,8 +831,6 @@ async function handleAddMemberForm(message, res, session, visitorId) {
 
   // Step 4: Phone Number
   if (session.adminStep === "addMember_phone") {
-    console.log("🔥 [ADMIN] Phone step");
-
     // Clean the phone number by removing all non-digit characters
     const cleanPhone = message.replace(/\D/g, "");
 
@@ -956,7 +844,6 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     const phoneRegex = /^\d{10}$/;
 
     if (!phoneRegex.test(finalPhone)) {
-      console.log("🔥 [ADMIN] Invalid phone number:", finalPhone);
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -977,22 +864,13 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     session.memberFormData.phone = finalPhone; // Store clean phone number
     session.adminStep = "addMember_membership";
     sessionStore.set(visitorId, session);
-    console.log(
-      "🔥 [ADMIN] Phone stored:",
-      finalPhone,
-      "moving to membership step"
-    );
 
     // Fetch membership plans and show options
     try {
-      console.log("🔥 [ADMIN] Fetching membership plans");
-
       // Use the Plan model to get all plans
       const plans = await Plan.find();
 
       if (plans && plans.length > 0) {
-        console.log("🔥 [ADMIN] Successfully fetched plans:", plans.length);
-
         // Format options for the select dropdown
         const options = plans.map((plan) => ({
           text: `${plan.name} - ${plan.period} (${plan.price} INR)`,
@@ -1040,8 +918,6 @@ async function handleAddMemberForm(message, res, session, visitorId) {
 
   // Step 5: Membership Type
   if (session.adminStep === "addMember_membership") {
-    console.log("🔥 [ADMIN] Membership step, message received:", message);
-
     // Process the selected membership
     let membershipValue = message;
     let selectedPlan = null;
@@ -1049,10 +925,7 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     // Handle different response formats from Zoho
     if (message && typeof message === "object" && message.value) {
       membershipValue = message.value;
-      console.log(
-        "🔥 [ADMIN] Extracted membership value from object:",
-        membershipValue
-      );
+
       // Find the selected plan by ID
       selectedPlan = session.plansData.find(
         (plan) => plan._id.toString() === membershipValue
@@ -1060,7 +933,6 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     }
     // If it's a string, try to match by the display text
     else if (typeof message === "string") {
-      console.log("🔥 [ADMIN] Received string membership value:", message);
       // Find the selected plan by matching the display text
       selectedPlan = session.plansData.find((plan) => {
         const displayText = `${plan.name} - ${plan.period} (${plan.price} INR)`;
@@ -1070,8 +942,6 @@ async function handleAddMemberForm(message, res, session, visitorId) {
 
     // Validate that a membership type is selected
     if (!selectedPlan) {
-      console.log("🔥 [ADMIN] Selected plan not found:", membershipValue);
-      console.log("🔥 [ADMIN] Available plans:", session.plansData);
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -1099,11 +969,6 @@ async function handleAddMemberForm(message, res, session, visitorId) {
       selectedPlan.includesPersonalTraining;
 
     sessionStore.set(visitorId, session);
-    console.log(
-      "🔥 [ADMIN] Membership stored:",
-      selectedPlan.name,
-      "checking personal training inclusion"
-    );
 
     // Check if membership includes personal training
     if (selectedPlan.includesPersonalTraining) {
@@ -1126,10 +991,7 @@ async function handleAddMemberForm(message, res, session, visitorId) {
 
   // Step 6: Personal Trainer (only if membership includes personal training)
   if (session.adminStep === "addMember_trainer") {
-    console.log("🔥 [ADMIN] Trainer step, message received:", message);
-
     if (!["Yes", "No"].includes(message)) {
-      console.log("🔥 [ADMIN] Invalid trainer option");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -1139,13 +1001,12 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     }
 
     if (message === "Yes") {
-      console.log("🔥 [ADMIN] Admin selected Yes, showing trainer selection");
       session.adminStep = "addMember_trainer_selection";
       sessionStore.set(visitorId, session);
       return showTrainerSelection(res, session, visitorId);
     } else {
       // User selected "No" - inform them to select trainer on website
-      console.log("🔥 [ADMIN] Admin selected No, proceeding without trainer");
+
       session.memberFormData.personal_trainer = false;
       session.memberFormData.trainerAssigned = "Self";
       return addMemberToDatabase(
@@ -1159,11 +1020,6 @@ async function handleAddMemberForm(message, res, session, visitorId) {
 
   // Step 7: Trainer Selection (after showing the selection dropdown)
   if (session.adminStep === "addMember_trainer_selection") {
-    console.log(
-      "🔥 [ADMIN] Trainer selection step, message received:",
-      message
-    );
-
     // Process the selected trainer
     let trainerValue = message;
     let selectedTrainer = null;
@@ -1171,10 +1027,7 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     // Handle different response formats from Zoho
     if (message && typeof message === "object" && message.value) {
       trainerValue = message.value;
-      console.log(
-        "🔥 [ADMIN] Extracted trainer value from object:",
-        trainerValue
-      );
+
       // Find the selected trainer by ID
       selectedTrainer = session.trainersData.find(
         (trainer) => trainer._id.toString() === trainerValue
@@ -1182,7 +1035,6 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     }
     // If it's a string, try to match by the display text
     else if (typeof message === "string") {
-      console.log("🔥 [ADMIN] Received string trainer value:", message);
       // Find the selected trainer by matching the display text
       selectedTrainer = session.trainersData.find((trainer) => {
         const displayText = `${trainer.name} - ${trainer.specialization}`;
@@ -1192,8 +1044,6 @@ async function handleAddMemberForm(message, res, session, visitorId) {
 
     // Validate that a trainer is selected
     if (!selectedTrainer) {
-      console.log("🔥 [ADMIN] Selected trainer not found:", trainerValue);
-      console.log("🔥 [ADMIN] Available trainers:", session.trainersData);
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -1217,13 +1067,12 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     session.memberFormData.trainerAssigned = "Yes"; // Use "Yes" instead of trainer name
     session.memberFormData.personal_trainer = true;
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Trainer selected:", selectedTrainer.name);
 
     return addMemberToDatabase(res, session, visitorId);
   }
 
   // Fallback
-  console.log("🔥 [ADMIN] Form fallback to dashboard");
+
   session.adminStep = "dashboard";
   sessionStore.set(visitorId, session);
   return showAdminDashboard(res, session, visitorId);
@@ -1231,22 +1080,15 @@ async function handleAddMemberForm(message, res, session, visitorId) {
 
 // ----------------------- Add Trainer Flow -----------------------
 async function handleAddTrainer(message, res, session, visitorId) {
-  console.log("🔥 [ADMIN] Add trainer flow called with message:", message);
-  console.log("🔥 [ADMIN] Current step:", session.adminStep);
-
   // Initialize form data if not exists
   if (!session.trainerFormData) {
     session.trainerFormData = {};
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Initialized trainer form data");
   }
 
   // Step 1: Name
   if (session.adminStep === "addTrainer_name") {
-    console.log("🔥 [ADMIN] Trainer name step");
-
     if (!message) {
-      console.log("🔥 [ADMIN] No message, showing name prompt");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -1264,12 +1106,10 @@ async function handleAddTrainer(message, res, session, visitorId) {
     let nameValue = message;
     if (message && typeof message === "object" && message.value) {
       nameValue = message.value;
-      console.log("🔥 [ADMIN] Extracted name value from object:", nameValue);
     }
 
     // Validate name
     if (!nameValue || nameValue.trim().length < 2) {
-      console.log("🔥 [ADMIN] Invalid name");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -1287,7 +1127,6 @@ async function handleAddTrainer(message, res, session, visitorId) {
     session.trainerFormData.name = nameValue;
     session.adminStep = "addTrainer_email";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Name stored, moving to email step");
 
     // Show email input (email type is supported)
     return res.json({
@@ -1306,11 +1145,8 @@ async function handleAddTrainer(message, res, session, visitorId) {
 
   // Step 2: Email
   if (session.adminStep === "addTrainer_email") {
-    console.log("🔥 [ADMIN] Trainer email step");
-
     // Validate email
     if (!validateEmail(message)) {
-      console.log("🔥 [ADMIN] Invalid email");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -1354,7 +1190,6 @@ async function handleAddTrainer(message, res, session, visitorId) {
     session.trainerFormData.email = message;
     session.adminStep = "addTrainer_phone";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Email stored, moving to phone step");
 
     // Show phone input with telephone type
     return res.json({
@@ -1375,8 +1210,6 @@ async function handleAddTrainer(message, res, session, visitorId) {
 
   // Step 3: Phone Number
   if (session.adminStep === "addTrainer_phone") {
-    console.log("🔥 [ADMIN] Trainer phone step");
-
     // Clean the phone number by removing all non-digit characters
     const cleanPhone = message.replace(/\D/g, "");
 
@@ -1390,7 +1223,6 @@ async function handleAddTrainer(message, res, session, visitorId) {
     const phoneRegex = /^\d{10}$/;
 
     if (!phoneRegex.test(finalPhone)) {
-      console.log("🔥 [ADMIN] Invalid phone number:", finalPhone);
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -1411,11 +1243,6 @@ async function handleAddTrainer(message, res, session, visitorId) {
     session.trainerFormData.phone = finalPhone; // Store clean phone number
     session.adminStep = "addTrainer_experience";
     sessionStore.set(visitorId, session);
-    console.log(
-      "🔥 [ADMIN] Phone stored:",
-      finalPhone,
-      "moving to experience step"
-    );
 
     // Show experience input as plain text
     return res.json({
@@ -1429,11 +1256,8 @@ async function handleAddTrainer(message, res, session, visitorId) {
 
   // Step 4: Experience
   if (session.adminStep === "addTrainer_experience") {
-    console.log("🔥 [ADMIN] Trainer experience step");
-
     // Check if message is empty
     if (!message || message.trim() === "") {
-      console.log("🔥 [ADMIN] Empty experience input");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -1445,7 +1269,6 @@ async function handleAddTrainer(message, res, session, visitorId) {
 
     // Check if input contains only numbers
     if (!/^\d+$/.test(message.trim())) {
-      console.log("🔥 [ADMIN] Non-numeric experience input:", message);
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -1460,7 +1283,6 @@ async function handleAddTrainer(message, res, session, visitorId) {
 
     // Validate experience range
     if (isNaN(experience) || experience < 0 || experience > 50) {
-      console.log("🔥 [ADMIN] Invalid experience value:", experience);
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -1472,7 +1294,6 @@ async function handleAddTrainer(message, res, session, visitorId) {
     session.trainerFormData.experience = experience;
     session.adminStep = "addTrainer_specialization";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Experience stored, moving to specialization step");
 
     // Show specialization input
     return res.json({
@@ -1486,11 +1307,8 @@ async function handleAddTrainer(message, res, session, visitorId) {
 
   // Step 5: Specialization
   if (session.adminStep === "addTrainer_specialization") {
-    console.log("🔥 [ADMIN] Trainer specialization step");
-
     // Validate specialization
     if (!message || message.trim().length < 2) {
-      console.log("🔥 [ADMIN] Invalid specialization");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -1503,8 +1321,6 @@ async function handleAddTrainer(message, res, session, visitorId) {
     // Store specialization
     session.trainerFormData.specialization = message.trim();
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Specialization stored");
-    console.log("🔥 [ADMIN] Form data complete:", session.trainerFormData);
 
     // Save to database
     try {
@@ -1529,7 +1345,6 @@ async function handleAddTrainer(message, res, session, visitorId) {
 
       // Save the user to the database
       const savedUser = await newUser.save();
-      console.log("🔥 [ADMIN] User saved to database:", savedUser);
 
       // Create trainer profile
       const newTrainer = new Trainer({
@@ -1541,10 +1356,6 @@ async function handleAddTrainer(message, res, session, visitorId) {
 
       // Save the trainer to the database
       const savedTrainer = await newTrainer.save();
-      console.log(
-        "🔥 [ADMIN] Trainer profile saved to database:",
-        savedTrainer
-      );
 
       // Send welcome email with credentials
       const emailData = {
@@ -1556,9 +1367,7 @@ async function handleAddTrainer(message, res, session, visitorId) {
 
       // Send email in the background without waiting
       sendWelcomeEmail(emailData, generatedPassword, "trainer")
-        .then((emailResult) => {
-          console.log("🔥 [ADMIN] Welcome email result:", emailResult);
-        })
+        .then((emailResult) => {})
         .catch((emailError) => {
           console.error("🔥 [ADMIN] Error sending welcome email:", emailError);
         });
@@ -1577,7 +1386,6 @@ async function handleAddTrainer(message, res, session, visitorId) {
       const formData = session.trainerFormData;
       session.trainerFormData = null;
       sessionStore.set(visitorId, session);
-      console.log("🔥 [ADMIN] Session reset to dashboard");
 
       return res.json({
         platform: "ZOHOSALESIQ",
@@ -1633,8 +1441,6 @@ async function handleAddTrainer(message, res, session, visitorId) {
     }
   }
 
-  // Fallback
-  console.log("🔥 [ADMIN] Add trainer flow fallback to dashboard");
   session.adminStep = "dashboard";
   sessionStore.set(visitorId, session);
   return showAdminDashboard(res, session, visitorId);
@@ -1642,22 +1448,15 @@ async function handleAddTrainer(message, res, session, visitorId) {
 
 // ----------------------- Add Admin Flow -----------------------
 async function handleAddAdmin(message, res, session, visitorId) {
-  console.log("🔥 [ADMIN] Add admin flow called with message:", message);
-  console.log("🔥 [ADMIN] Current step:", session.adminStep);
-
   // Initialize form data if not exists
   if (!session.adminData) {
     session.adminData = {};
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Initialized admin form data");
   }
 
   // Step 1: Name
   if (session.adminStep === "addAdmin_name") {
-    console.log("🔥 [ADMIN] Admin name step");
-
     if (!message) {
-      console.log("🔥 [ADMIN] No message, showing name prompt");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -1675,12 +1474,10 @@ async function handleAddAdmin(message, res, session, visitorId) {
     let nameValue = message;
     if (message && typeof message === "object" && message.value) {
       nameValue = message.value;
-      console.log("🔥 [ADMIN] Extracted name value from object:", nameValue);
     }
 
     // Validate name
     if (!nameValue || nameValue.trim().length < 2) {
-      console.log("🔥 [ADMIN] Invalid name");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -1698,7 +1495,6 @@ async function handleAddAdmin(message, res, session, visitorId) {
     session.adminData.name = nameValue;
     session.adminStep = "addAdmin_email";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Name stored, moving to email step");
 
     // Show email input
     return res.json({
@@ -1717,11 +1513,8 @@ async function handleAddAdmin(message, res, session, visitorId) {
 
   // Step 2: Email
   if (session.adminStep === "addAdmin_email") {
-    console.log("🔥 [ADMIN] Admin email step");
-
     // Validate email
     if (!validateEmail(message)) {
-      console.log("🔥 [ADMIN] Invalid email");
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -1765,7 +1558,6 @@ async function handleAddAdmin(message, res, session, visitorId) {
     session.adminData.email = message;
     session.adminStep = "addAdmin_phone";
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Email stored, moving to phone step");
 
     // Show phone input
     return res.json({
@@ -1786,8 +1578,6 @@ async function handleAddAdmin(message, res, session, visitorId) {
 
   // Step 3: Phone Number
   if (session.adminStep === "addAdmin_phone") {
-    console.log("🔥 [ADMIN] Admin phone step");
-
     // Clean the phone number by removing all non-digit characters
     const cleanPhone = message.replace(/\D/g, "");
 
@@ -1801,7 +1591,6 @@ async function handleAddAdmin(message, res, session, visitorId) {
     const phoneRegex = /^\d{10}$/;
 
     if (!phoneRegex.test(finalPhone)) {
-      console.log("🔥 [ADMIN] Invalid phone number:", finalPhone);
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -1821,8 +1610,6 @@ async function handleAddAdmin(message, res, session, visitorId) {
     // Store phone and move to next step
     session.adminData.phone = finalPhone; // Store clean phone number
     sessionStore.set(visitorId, session);
-    console.log("🔥 [ADMIN] Phone stored:", finalPhone);
-    console.log("🔥 [ADMIN] Form data complete:", session.adminData);
 
     // Save to database
     try {
@@ -1847,7 +1634,6 @@ async function handleAddAdmin(message, res, session, visitorId) {
 
       // Save the admin to the database
       const savedAdmin = await newAdmin.save();
-      console.log("🔥 [ADMIN] Admin saved to database:", savedAdmin);
 
       // Send welcome email with credentials
       const emailData = {
@@ -1858,9 +1644,7 @@ async function handleAddAdmin(message, res, session, visitorId) {
 
       // Send email in the background without waiting
       sendWelcomeEmail(emailData, generatedPassword, "admin")
-        .then((emailResult) => {
-          console.log("🔥 [ADMIN] Welcome email result:", emailResult);
-        })
+        .then((emailResult) => {})
         .catch((emailError) => {
           console.error("🔥 [ADMIN] Error sending welcome email:", emailError);
         });
@@ -1877,7 +1661,6 @@ async function handleAddAdmin(message, res, session, visitorId) {
       const formData = session.adminData;
       session.adminData = null;
       sessionStore.set(visitorId, session);
-      console.log("🔥 [ADMIN] Session reset to dashboard");
 
       return res.json({
         platform: "ZOHOSALESIQ",
@@ -1934,7 +1717,7 @@ async function handleAddAdmin(message, res, session, visitorId) {
   }
 
   // Fallback
-  console.log("🔥 [ADMIN] Add admin flow fallback to dashboard");
+
   session.adminStep = "dashboard";
   sessionStore.set(visitorId, session);
   return showAdminDashboard(res, session, visitorId);
@@ -1942,11 +1725,10 @@ async function handleAddAdmin(message, res, session, visitorId) {
 
 // ----------------------- Helper Functions -----------------------
 function validateEmail(email) {
-  console.log("🔥 [ADMIN] Validating email:", email);
   // simple email validation
   const re = /\S+@\S+\.\S+/;
   const isValid = re.test(email);
-  console.log("🔥 [ADMIN] Email validation result:", isValid);
+
   return isValid;
 }
 
@@ -2056,7 +1838,6 @@ async function addMemberToDatabase(
 
     // Save the user
     const savedUser = await newUser.save();
-    console.log("🔥 [ADMIN] User saved to database:", savedUser);
 
     // Send welcome email with credentials
     const emailData = {

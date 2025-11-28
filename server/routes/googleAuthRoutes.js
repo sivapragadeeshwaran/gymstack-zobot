@@ -7,8 +7,6 @@ const googleCalendarController = require("../controllers/googleCalendarControlle
 
 // ✅ Step 1: Redirect to Google OAuth consent screen
 router.get("/auth", (req, res) => {
-  console.log("🔐 [GOOGLE AUTH] Initiating OAuth flow");
-
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: "offline", // Get refresh token
     scope: [
@@ -18,7 +16,6 @@ router.get("/auth", (req, res) => {
     prompt: "consent", // Force consent screen to get refresh token
   });
 
-  console.log("🔐 [GOOGLE AUTH] Redirecting to:", authUrl);
   res.redirect(authUrl);
 });
 
@@ -40,15 +37,11 @@ router.get("/callback", async (req, res) => {
   }
 
   try {
-    console.log("🔐 [GOOGLE AUTH] Received authorization code");
-
     // Exchange authorization code for tokens
     const { tokens } = await oauth2Client.getToken(code);
-    console.log("🔐 [GOOGLE AUTH] Tokens received successfully");
 
     // Save tokens
     await tokenService.saveTokens(tokens);
-    console.log("✅ [GOOGLE AUTH] Tokens saved to file system");
 
     // Set credentials for immediate use
     oauth2Client.setCredentials(tokens);
@@ -169,7 +162,6 @@ router.get("/status", async (req, res) => {
 router.post("/disconnect", async (req, res) => {
   try {
     await tokenService.deleteTokens();
-    console.log("✅ [GOOGLE AUTH] Tokens deleted");
 
     res.json({
       success: true,

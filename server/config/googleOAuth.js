@@ -34,14 +34,6 @@ const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_REDIRECT_URI
 );
 
-// ✅ Log successful initialization
-console.log("✅ [GOOGLE OAUTH] OAuth2 client initialized");
-console.log(
-  "📍 [GOOGLE OAUTH] Client ID:",
-  process.env.GOOGLE_CLIENT_ID.substring(0, 20) + "..."
-);
-console.log("📍 [GOOGLE OAUTH] Redirect URI:", process.env.GOOGLE_REDIRECT_URI);
-
 // ✅ Export the configured OAuth2 client
 module.exports = {
   oauth2Client,

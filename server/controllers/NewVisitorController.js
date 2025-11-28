@@ -10,21 +10,13 @@ const freeTrialController = require("./freeTrialController");
 const BASE_URL = process.env.BASE_URL || "https://yourdomain.com"; // Replace with your actual domain
 
 exports.handleNewVisitor = (message, res, session, visitorId) => {
-  console.log(
-    "🔥 [NEW VISITOR] handleNewVisitor called with message:",
-    message
-  );
-  console.log("🔥 [NEW VISITOR] Current session step:", session.visitorStep);
-
   // Initialize visitor session if not already done
   if (!session.visitorStep) {
-    console.log("🔥 [NEW VISITOR] Initializing session to greeting");
     session.visitorStep = "greeting";
     sessionStore.set(visitorId, session);
   }
 
   const msg = (message || "").toString().trim();
-  console.log("🔥 [NEW VISITOR] Processed message:", msg);
 
   // Handle bot URLs from carousel actions
   if (msg.startsWith("bot://")) {
@@ -35,7 +27,6 @@ exports.handleNewVisitor = (message, res, session, visitorId) => {
 
       switch (path) {
         case "selectPlan":
-          console.log(`Plan selected: ${params.plan_name} (${params.plan_id})`);
           return res.json({
             action: "reply",
             replies: [
@@ -45,9 +36,6 @@ exports.handleNewVisitor = (message, res, session, visitorId) => {
           });
 
         case "viewTrainer":
-          console.log(
-            `Trainer profile requested: ${params.trainer_name} (${params.trainer_id})`
-          );
           return res.json({
             action: "reply",
             replies: [
@@ -57,9 +45,6 @@ exports.handleNewVisitor = (message, res, session, visitorId) => {
           });
 
         case "learnProgram":
-          console.log(
-            `Program details requested: ${params.program_name} (${params.program_id})`
-          );
           return res.json({
             action: "reply",
             replies: [
@@ -96,61 +81,51 @@ exports.handleNewVisitor = (message, res, session, visitorId) => {
 
   // Handle navigation
   if (session.visitorStep === "greeting") {
-    console.log("🔥 [NEW VISITOR] Greeting step, checking message:", msg);
-
     // Check for both original text and text with emojis
     switch (msg) {
       case "Membership Plans":
       case "💳 Membership Plans":
-        console.log("🔥 [NEW VISITOR] Membership Plans selected");
         session.visitorStep = "membership_plans";
         sessionStore.set(visitorId, session);
         return showMembershipPlans(res, session, visitorId);
 
       case "BMI Calculator":
       case "📊 BMI Calculator":
-        console.log("🔥 [NEW VISITOR] BMI Calculator selected");
         session.visitorStep = "bmi_calculator";
         sessionStore.set(visitorId, session);
         return handleBMICalculator(msg, res, session, visitorId);
 
       case "Our Trainers":
       case "🏋️‍♂️ Our Trainers":
-        console.log("🔥 [NEW VISITOR] Our Trainers selected");
         session.visitorStep = "trainers";
         sessionStore.set(visitorId, session);
         return showTrainers(res, session, visitorId);
 
       case "Training Programs":
       case "📝 Training Programs":
-        console.log("🔥 [NEW VISITOR] Training Programs selected");
         session.visitorStep = "training_programs";
         sessionStore.set(visitorId, session);
         return showTrainingPrograms(res, session, visitorId);
 
       case "Gym Info":
       case "ℹ️ Gym Info":
-        console.log("🔥 [NEW VISITOR] Gym Info selected");
         session.visitorStep = "gym_info";
         sessionStore.set(visitorId, session);
         return showGymInfo(res, session, visitorId);
 
       case "Contact Us":
       case "📞 Contact Us":
-        console.log("🔥 [NEW VISITOR] Contact Us selected");
         session.visitorStep = "contact";
         sessionStore.set(visitorId, session);
         return handleContactForm(msg, res, session, visitorId);
 
       case "🤖 Talk to AI Assistant":
-        console.log("🔥 [NEW VISITOR] Talk to AI Assistant selected");
         session.visitorStep = "ai_assistant";
         sessionStore.set(visitorId, session);
         return handleAIAssistant(msg, res, session, visitorId);
 
       case "Book Free Trial":
       case "📅 Book Free Trial":
-        console.log("🔥 [NEW VISITOR] Book Free Trial selected");
         session.visitorStep = "free_trial";
         sessionStore.set(visitorId, session);
         return freeTrialController.handleFreeTrial(
@@ -161,7 +136,6 @@ exports.handleNewVisitor = (message, res, session, visitorId) => {
         );
 
       default:
-        console.log("🔥 [NEW VISITOR] Unknown option, showing greeting");
         return showGreeting(res, session, visitorId);
     }
   }
@@ -206,7 +180,6 @@ exports.handleNewVisitor = (message, res, session, visitorId) => {
       return freeTrialController.handleFreeTrial(msg, res, session, visitorId);
 
     default:
-      console.log("🔥 [NEW VISITOR] Unknown step, falling back to greeting");
       session.visitorStep = "greeting";
       sessionStore.set(visitorId, session);
       return showGreeting(res, session, visitorId);
@@ -215,8 +188,6 @@ exports.handleNewVisitor = (message, res, session, visitorId) => {
 
 // ----------------------- Greeting -----------------------
 function showGreeting(res, session, visitorId) {
-  console.log("🔥 [NEW VISITOR] Showing greeting");
-
   const greeting =
     "👋 Welcome to Strength Zone Gym! I'm your virtual assistant. How can I help you today?";
 
@@ -239,18 +210,11 @@ function showGreeting(res, session, visitorId) {
   session.visitorStep = "greeting";
   sessionStore.set(visitorId, session);
 
-  console.log(
-    "🔥 [NEW VISITOR] Greeting payload:",
-    JSON.stringify(payload, null, 2)
-  );
-
   return res.json(payload);
 }
 
 // ----------------------- Membership Plans -----------------------
 async function showMembershipPlans(res, session, visitorId) {
-  console.log("🔥 [NEW VISITOR] Showing membership plans");
-
   try {
     // Fetch all membership plans
     const plans = await Plan.find();
@@ -341,9 +305,6 @@ async function showMembershipPlans(res, session, visitorId) {
 
 // ----------------------- BMI Calculator -----------------------
 async function handleBMICalculator(message, res, session, visitorId) {
-  console.log("🔥 [NEW VISITOR] BMI calculator called with message:", message);
-  console.log("🔥 [NEW VISITOR] Current step:", session.visitorStep);
-
   try {
     // Handle "Back to Main Menu" at any point
     if (message === "⬅️ Back to Main Menu") {
@@ -660,8 +621,6 @@ async function showTrainers(res, session, visitorId) {
         );
       }
 
-      console.log(`Trainer: ${trainer.name} | Image: ${imageUrl}`);
-
       return {
         title: trainer.name,
         subtitle: `Experience: ${trainer.experience} years | Specialization: ${trainer.specialization}`,
@@ -689,11 +648,6 @@ async function showTrainers(res, session, visitorId) {
       suggestions: ["⬅️ Back to Main Menu"],
     };
 
-    console.log(
-      "📤 Trainers carousel payload:",
-      JSON.stringify(payload, null, 2)
-    );
-
     // Reset session to greeting
     session.visitorStep = "greeting";
     sessionStore.set(visitorId, session);
@@ -713,8 +667,6 @@ async function showTrainers(res, session, visitorId) {
 
 // ----------------------- Training Programs -----------------------
 function showTrainingPrograms(res, session, visitorId) {
-  console.log("🔥 [NEW VISITOR] Showing training programs");
-
   // Define training programs with descriptions
   const programs = [
     {
@@ -790,8 +742,6 @@ function showTrainingPrograms(res, session, visitorId) {
 
 // ----------------------- Gym Info -----------------------
 function showGymInfo(res, session, visitorId) {
-  console.log("🔥 [NEW VISITOR] Showing gym info");
-
   // Gym timings
   const timings =
     `🕒 GYM TIMINGS\n\n` +
@@ -822,9 +772,6 @@ function showGymInfo(res, session, visitorId) {
 
 // ----------------------- Contact Form -----------------------
 async function handleContactForm(message, res, session, visitorId) {
-  console.log("🔥 [NEW VISITOR] Contact form called with message:", message);
-  console.log("🔥 [NEW VISITOR] Current step:", session.visitorStep);
-
   try {
     // Handle "Back to Main Menu" at any point
     if (message === "⬅️ Back to Main Menu") {

@@ -89,7 +89,7 @@ async function sendExpiryEmail(member, daysUntilExpiry) {
 
     // Send the email
     const info = await transporter.sendMail(mailOptions);
-    console.log(`Email sent to ${member.email}: ${info.messageId}`);
+
     return { success: true, email: member.email, messageId: info.messageId };
   } catch (error) {
     console.error(`Error sending email to ${member.email}:`, error);
@@ -99,8 +99,6 @@ async function sendExpiryEmail(member, daysUntilExpiry) {
 
 // Main function to get expired members and send emails
 async function sendExpiryEmails() {
-  console.log("🔥 [EMAIL] Starting to send expiry emails");
-
   try {
     // Get current date
     const today = new Date();
@@ -136,14 +134,6 @@ async function sendExpiryEmails() {
         $lt: dayAfterTomorrow,
       },
     }).populate("membershipPlan");
-
-    console.log(`🔥 [EMAIL] Found ${expiredMembers.length} expired members`);
-    console.log(
-      `🔥 [EMAIL] Found ${expiringIn1Day.length} members expiring in 1 day`
-    );
-    console.log(
-      `🔥 [EMAIL] Found ${expiringIn2Days.length} members expiring in 2 days`
-    );
 
     const results = [];
     const allMembers = [
@@ -184,10 +174,6 @@ async function sendExpiryEmails() {
     const successful = results.filter((r) => r.success).length;
     const failed = results.filter((r) => !r.success).length;
 
-    console.log(
-      `🔥 [EMAIL] Email sending completed: ${successful} successful, ${failed} failed`
-    );
-
     return {
       success: true,
       message: `Email sending completed: ${successful} successful, ${failed} failed`,
@@ -215,7 +201,7 @@ async function sendTestEmail(toEmail) {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log(`Test email sent to ${toEmail}: ${info.messageId}`);
+
     return {
       success: true,
       message: `Test email sent successfully to ${toEmail}`,
@@ -298,7 +284,7 @@ async function sendWelcomeEmail(userData, password, role) {
 
     // Send the email
     const info = await transporter.sendMail(mailOptions);
-    console.log(`Welcome email sent to ${userData.email}: ${info.messageId}`);
+
     return { success: true, email: userData.email, messageId: info.messageId };
   } catch (error) {
     console.error(`Error sending welcome email to ${userData.email}:`, error);

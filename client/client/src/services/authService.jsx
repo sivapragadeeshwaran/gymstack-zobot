@@ -12,10 +12,6 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkAuth = () => {
       const token = localStorage.getItem("authToken");
-      console.log(
-        "Initial check - token in localStorage:",
-        token ? "Found" : "Not found"
-      );
 
       if (token) {
         setLoading(false);
@@ -30,10 +26,6 @@ export const AuthProvider = ({ children }) => {
 
   // Modified login function to handle token
   const login = (user, token) => {
-    console.log("=== AUTHCONTEXT LOGIN START ===");
-    console.log("User received:", user);
-    console.log("Token received:", token);
-
     if (!token || token === "undefined" || token === "null") {
       console.error("❌ Invalid token received in AuthContext:", token);
       return;
@@ -42,14 +34,10 @@ export const AuthProvider = ({ children }) => {
     try {
       // Store token in localStorage
       localStorage.setItem("authToken", token);
-      console.log("✅ Token stored in localStorage with key 'authToken'");
 
       // Verify it was stored
       const storedToken = localStorage.getItem("authToken");
-      console.log(
-        "Verification - stored token:",
-        storedToken ? "✅ Success" : "❌ Failed"
-      );
+
       if (storedToken) {
         console.log(
           "Stored token value (first 10 chars):",
@@ -69,7 +57,6 @@ export const AuthProvider = ({ children }) => {
             window.$zoho.salesiq.visitor.info({
               authToken: token,
             });
-            console.log("✅ Token set in Zoho SalesIQ using visitor.info");
           } catch (e) {
             console.error("❌ Error setting token in Zoho SalesIQ:", e);
           }
@@ -81,12 +68,9 @@ export const AuthProvider = ({ children }) => {
       }
 
       setAuthUser(user);
-      console.log("✅ authUser state set");
     } catch (e) {
       console.error("❌ Error storing token in localStorage:", e);
     }
-
-    console.log("=== AUTHCONTEXT LOGIN END ===");
   };
 
   // Modified logout function to handle token
@@ -98,7 +82,6 @@ export const AuthProvider = ({ children }) => {
     } finally {
       // Remove token from localStorage
       localStorage.removeItem("authToken");
-      console.log("Token removed from localStorage");
 
       // Remove token from Zoho SalesIQ visitor attributes if available
       if (
@@ -112,7 +95,6 @@ export const AuthProvider = ({ children }) => {
             window.$zoho.salesiq.visitor.info({
               authToken: null,
             });
-            console.log("Token removed from Zoho SalesIQ");
           } catch (e) {
             console.error("Error removing token from Zoho SalesIQ:", e);
           }

@@ -24,8 +24,6 @@ class GoogleCalendarController {
 
       // Setup automatic token refresh
       oauth2Client.on("tokens", async (newTokens) => {
-        console.log("🔄 [GOOGLE CALENDAR] Tokens refreshed automatically");
-
         if (newTokens.refresh_token) {
           await tokenService.saveTokens(newTokens);
         } else {
@@ -35,7 +33,6 @@ class GoogleCalendarController {
       });
 
       this.initialized = true;
-      console.log("✅ [GOOGLE CALENDAR] Service initialized");
     } catch (error) {
       console.error(
         "❌ [GOOGLE CALENDAR] Initialization error:",
@@ -106,11 +103,6 @@ class GoogleCalendarController {
   // Create free trial booking event
   async createFreeTrialEvent(bookingData) {
     try {
-      console.log(
-        "📅 [GOOGLE CALENDAR] Creating free trial event:",
-        bookingData
-      );
-
       if (!this.initialized) {
         await this.initialize();
       }
@@ -207,9 +199,6 @@ Status: Confirmed
         sendUpdates: bookingData.email ? "all" : "none",
       });
 
-      console.log("✅ [GOOGLE CALENDAR] Event created successfully");
-      console.log("📅 Event Link:", response.data.htmlLink);
-
       return {
         success: true,
         eventId: response.data.id,
@@ -240,8 +229,6 @@ Status: Confirmed
   // Update existing calendar event
   async updateFreeTrialEvent(eventId, bookingData) {
     try {
-      console.log("📅 [GOOGLE CALENDAR] Updating event:", eventId);
-
       if (!this.initialized) {
         await this.initialize();
       }
@@ -331,8 +318,6 @@ Last Updated: ${new Date().toLocaleString("en-IN", {
         sendUpdates: bookingData.email ? "all" : "none",
       });
 
-      console.log("✅ [GOOGLE CALENDAR] Event updated successfully");
-
       return {
         success: true,
         eventId: response.data.id,
@@ -351,8 +336,6 @@ Last Updated: ${new Date().toLocaleString("en-IN", {
   // Cancel/Delete calendar event
   async cancelFreeTrialEvent(eventId, customerEmail = null) {
     try {
-      console.log("📅 [GOOGLE CALENDAR] Cancelling event:", eventId);
-
       if (!this.initialized) {
         await this.initialize();
       }
@@ -365,8 +348,6 @@ Last Updated: ${new Date().toLocaleString("en-IN", {
         eventId: eventId,
         sendUpdates: customerEmail ? "all" : "none",
       });
-
-      console.log("✅ [GOOGLE CALENDAR] Event cancelled successfully");
 
       return {
         success: true,

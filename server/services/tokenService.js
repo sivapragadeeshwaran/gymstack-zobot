@@ -12,8 +12,6 @@ class TokenService {
    */
   async saveTokens(tokens) {
     try {
-      console.log("💾 [TOKEN SERVICE] Saving tokens to file system");
-
       // Ensure the config directory exists
       const configDir = path.dirname(TOKEN_PATH);
       await fs.mkdir(configDir, { recursive: true });
@@ -34,10 +32,6 @@ class TokenService {
         "utf-8"
       );
 
-      console.log("✅ [TOKEN SERVICE] Tokens saved successfully");
-      console.log("📍 [TOKEN SERVICE] Token path:", TOKEN_PATH);
-      console.log("📅 [TOKEN SERVICE] Expiry date:", tokenData.expires_at);
-
       return true;
     } catch (error) {
       console.error("❌ [TOKEN SERVICE] Error saving tokens:", error.message);
@@ -52,16 +46,10 @@ class TokenService {
    */
   async loadTokens() {
     try {
-      console.log("📂 [TOKEN SERVICE] Loading tokens from file system");
-      console.log("📍 [TOKEN SERVICE] Token path:", TOKEN_PATH);
-
       // Check if token file exists
       try {
         await fs.access(TOKEN_PATH);
       } catch (error) {
-        console.log(
-          "ℹ️ [TOKEN SERVICE] No token file found - calendar not connected"
-        );
         console.log("👉 [TOKEN SERVICE] Connect at: /api/google/auth");
         return null;
       }
@@ -70,21 +58,10 @@ class TokenService {
       const data = await fs.readFile(TOKEN_PATH, "utf-8");
       const tokens = JSON.parse(data);
 
-      console.log("✅ [TOKEN SERVICE] Tokens loaded successfully");
-
       if (tokens.expiry_date) {
         const expiryDate = new Date(tokens.expiry_date);
         const now = new Date();
         const isExpired = expiryDate < now;
-
-        console.log(
-          "📅 [TOKEN SERVICE] Token expiry:",
-          expiryDate.toLocaleString()
-        );
-        console.log(
-          "🔄 [TOKEN SERVICE] Token status:",
-          isExpired ? "EXPIRED" : "VALID"
-        );
 
         if (isExpired && tokens.refresh_token) {
           console.log(
@@ -121,18 +98,12 @@ class TokenService {
    */
   async deleteTokens() {
     try {
-      console.log("🗑️ [TOKEN SERVICE] Deleting tokens");
-
       await fs.unlink(TOKEN_PATH);
 
-      console.log("✅ [TOKEN SERVICE] Tokens deleted successfully");
       return true;
     } catch (error) {
       // If file doesn't exist, that's okay
       if (error.code === "ENOENT") {
-        console.log(
-          "ℹ️ [TOKEN SERVICE] No token file to delete (already disconnected)"
-        );
         return true;
       }
 
@@ -148,10 +119,9 @@ class TokenService {
   async tokensExist() {
     try {
       await fs.access(TOKEN_PATH);
-      console.log("✅ [TOKEN SERVICE] Token file exists");
+
       return true;
     } catch (error) {
-      console.log("ℹ️ [TOKEN SERVICE] Token file does not exist");
       return false;
     }
   }

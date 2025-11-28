@@ -6,31 +6,20 @@ require("dotenv").config(); // Add this line to load environment variables
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER, // Remove quotes around process.env.EMAIL_USER
-    pass: process.env.EMAIL_PASS, // Remove quotes around process.env.EMAIL_PASS
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
 exports.handleProblemReport = (message, res, session, visitorId) => {
-  console.log(
-    "🔥 [PROBLEM_REPORT] handleProblemReport called with message:",
-    message
-  );
-  console.log(
-    "🔥 [PROBLEM_REPORT] Current session step:",
-    session.problemReportStep
-  );
-
   // Initialize problem report session if not already done
   if (!session.problemReportStep) {
-    console.log("🔥 [PROBLEM_REPORT] Initializing session to name step");
     session.problemReportStep = "name";
     sessionStore.set(visitorId, session);
     return askForName(res, session, visitorId);
   }
 
   const msg = (message || "").toString().trim();
-  console.log("🔥 [PROBLEM_REPORT] Processed message:", msg);
 
   // Handle "Back to Dashboard" at any point
   if (msg === "⬅️ Back to Dashboard") {
@@ -59,7 +48,6 @@ exports.handleProblemReport = (message, res, session, visitorId) => {
     case "confirm":
       return handleConfirmation(msg, res, session, visitorId);
     default:
-      console.log("🔥 [PROBLEM_REPORT] Unknown step, starting over");
       session.problemReportStep = "name";
       sessionStore.set(visitorId, session);
       return askForName(res, session, visitorId);
@@ -67,8 +55,6 @@ exports.handleProblemReport = (message, res, session, visitorId) => {
 };
 
 function askForName(res, session, visitorId) {
-  console.log("🔥 [PROBLEM_REPORT] Asking for name");
-
   return res.json({
     platform: "ZOHOSALESIQ",
     action: "reply",
@@ -84,8 +70,6 @@ function askForName(res, session, visitorId) {
 }
 
 function handleNameInput(message, res, session, visitorId) {
-  console.log("🔥 [PROBLEM_REPORT] Handling name input:", message);
-
   // Validate name (non-empty)
   if (!message || message.trim().length < 2) {
     return res.json({
@@ -122,8 +106,6 @@ function handleNameInput(message, res, session, visitorId) {
 }
 
 function handleEmailInput(message, res, session, visitorId) {
-  console.log("🔥 [PROBLEM_REPORT] Handling email input:", message);
-
   // Validate email
   const emailRegex = /\S+@\S+\.\S+/;
   if (!emailRegex.test(message)) {
@@ -155,8 +137,6 @@ function handleEmailInput(message, res, session, visitorId) {
 }
 
 function handleDescriptionInput(message, res, session, visitorId) {
-  console.log("🔥 [PROBLEM_REPORT] Handling description input:", message);
-
   // Validate description (non-empty)
   if (!message || message.trim().length < 10) {
     return res.json({
@@ -195,8 +175,6 @@ function handleDescriptionInput(message, res, session, visitorId) {
 }
 
 async function handleConfirmation(message, res, session, visitorId) {
-  console.log("🔥 [PROBLEM_REPORT] Handling confirmation:", message);
-
   if (message === "✅ Yes, Submit") {
     try {
       // Send email to admin
@@ -299,7 +277,6 @@ async function sendEmailToAdmin(session) {
   };
 
   await transporter.sendMail(mailOptions);
-  console.log("🔥 [PROBLEM_REPORT] Email sent to admin");
 }
 
 async function sendConfirmationEmail(session) {
@@ -316,5 +293,4 @@ async function sendConfirmationEmail(session) {
   };
 
   await transporter.sendMail(mailOptions);
-  console.log("🔥 [PROBLEM_REPORT] Confirmation email sent to user");
 }

@@ -40,12 +40,8 @@ database();
 (async () => {
   try {
     await googleCalendarController.initialize();
-    console.log("✅ [STARTUP] Google Calendar initialized");
   } catch (error) {
-    console.log("⚠️ [STARTUP] Google Calendar not connected:", error.message);
-    console.log(
-      "👉 [STARTUP] Connect at: http://localhost:5000/api/google/auth"
-    );
+    console.error("Error initializing Google Calendar:", error);
   }
 })();
 

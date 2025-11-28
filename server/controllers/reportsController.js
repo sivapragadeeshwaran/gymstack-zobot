@@ -293,8 +293,6 @@ async function getTrainerUtilization() {
 
 // Main function to handle view reports
 async function handleViewReports(res, session, visitorId) {
-  console.log("🔥 [REPORTS] View reports called");
-
   try {
     // Set session step to track which report type is selected
     session.adminStep = "viewReports_selectType";
@@ -315,10 +313,6 @@ async function handleViewReports(res, session, visitorId) {
       ],
     };
 
-    console.log(
-      "🔥 [REPORTS] Reports selection payload:",
-      JSON.stringify(payload, null, 2)
-    );
     return res.json(payload);
   } catch (error) {
     console.error("🔥 [REPORTS] Error in handleViewReports:", error);
@@ -336,20 +330,13 @@ async function handleViewReports(res, session, visitorId) {
 }
 
 // Function to handle report type selection
-// Function to handle report type selection
 async function handleReportTypeSelection(message, res, session, visitorId) {
-  console.log(
-    "🔥 [REPORTS] Report type selection called with message:",
-    message
-  );
-
   try {
     let reportContent = "";
     let reportTitle = "";
 
     switch (message) {
       case "Membership Statistics":
-        console.log("🔥 [REPORTS] Getting membership statistics");
         const membershipStats = await getMembershipStatistics();
 
         reportTitle = "📊 MEMBERSHIP STATISTICS";
@@ -365,7 +352,6 @@ async function handleReportTypeSelection(message, res, session, visitorId) {
         break;
 
       case "Financial Summary":
-        console.log("🔥 [REPORTS] Getting financial summary");
         const financialStats = await getFinancialSummary();
 
         // Determine profit/loss emoji and text
@@ -399,7 +385,6 @@ async function handleReportTypeSelection(message, res, session, visitorId) {
         break;
 
       case "Trainer Utilization":
-        console.log("🔥 [REPORTS] Getting trainer utilization");
         const trainerStats = await getTrainerUtilization();
 
         reportTitle = "🏋️ TRAINER UTILIZATION";
@@ -412,7 +397,6 @@ async function handleReportTypeSelection(message, res, session, visitorId) {
         break;
 
       case "⬅️ Back to Dashboard":
-        console.log("🔥 [REPORTS] Back to Dashboard selected");
         // Set session step to dashboard
         session.adminStep = "dashboard";
         sessionStore.set(visitorId, session);
@@ -438,9 +422,6 @@ async function handleReportTypeSelection(message, res, session, visitorId) {
         return res.json(dashboardPayload);
 
       default:
-        console.log(
-          "🔥 [REPORTS] Unknown report type, showing selection again"
-        );
         return handleViewReports(res, session, visitorId);
     }
 
@@ -462,10 +443,6 @@ async function handleReportTypeSelection(message, res, session, visitorId) {
       ],
     };
 
-    console.log(
-      "🔥 [REPORTS] Report data payload:",
-      JSON.stringify(payload, null, 2)
-    );
     return res.json(payload);
   } catch (error) {
     console.error("🔥 [REPORTS] Error in handleReportTypeSelection:", error);

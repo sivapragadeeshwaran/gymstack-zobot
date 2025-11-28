@@ -8,18 +8,13 @@ const aiAssistantController = require("./aiAssistantController");
 const problemReportController = require("./problemReportController"); // Import the problem report controller
 
 exports.handleMember = (message, res, session, visitorId) => {
-  console.log("🔥 [MEMBER] handleMember called with message:", message);
-  console.log("🔥 [MEMBER] Current session step:", session.memberStep);
-
   // Initialize member session if not already done
   if (!session.memberStep) {
-    console.log("🔥 [MEMBER] Initializing session to dashboard");
     session.memberStep = "dashboard";
     sessionStore.set(visitorId, session);
   }
 
   const msg = (message || "").toString().trim();
-  console.log("🔥 [MEMBER] Processed message:", msg);
 
   // Handle "Back to Dashboard" at any point
   if (msg === "⬅️ Back to Dashboard") {
@@ -30,40 +25,32 @@ exports.handleMember = (message, res, session, visitorId) => {
 
   // Handle dashboard navigation
   if (session.memberStep === "dashboard") {
-    console.log("🔥 [MEMBER] Dashboard step, checking message:", msg);
     switch (msg) {
       case "📋 Membership Status":
-        console.log("🔥 [MEMBER] Membership Status selected");
         session.memberStep = "membership_status";
         sessionStore.set(visitorId, session);
         return handleMembershipStatus(msg, res, session, visitorId);
       case "💳 Renew Membership":
-        console.log("🔥 [MEMBER] Renew Membership selected");
         session.memberStep = "renew_membership";
         sessionStore.set(visitorId, session);
         return handleRenewMembership(msg, res, session, visitorId);
       case "📅 Show Today's / Weekly Class":
-        console.log("🔥 [MEMBER] Show Class selected");
         session.memberStep = "show_class";
         sessionStore.set(visitorId, session);
         return handleShowClass(msg, res, session, visitorId);
       case "👤 Update Profile":
-        console.log("🔥 [MEMBER] Update Profile selected");
         session.memberStep = "update_profile";
         sessionStore.set(visitorId, session);
         return handleUpdateProfile(msg, res, session, visitorId);
       case "📊 BMI Calculator":
-        console.log("🔥 [MEMBER] BMI Calculator selected");
         session.memberStep = "bmi_calculator";
         sessionStore.set(visitorId, session);
         return handleBMICalculator(msg, res, session, visitorId);
       case "🤖 Talk to AI Assistant":
-        console.log("🔥 [MEMBER] Talk to AI Assistant selected");
         session.memberStep = "ai_assistant";
         sessionStore.set(visitorId, session);
         return handleAIAssistant(msg, res, session, visitorId);
       case "⚠️ Report a Problem":
-        console.log("🔥 [MEMBER] Report a Problem selected");
         session.memberStep = "problem_report";
         sessionStore.set(visitorId, session);
         return problemReportController.handleProblemReport(
@@ -73,7 +60,6 @@ exports.handleMember = (message, res, session, visitorId) => {
           visitorId
         );
       default:
-        console.log("🔥 [MEMBER] Unknown dashboard option, showing dashboard");
         return showMemberDashboard(res, session, visitorId);
     }
   }
@@ -129,7 +115,6 @@ exports.handleMember = (message, res, session, visitorId) => {
       );
 
     default:
-      console.log("🔥 [MEMBER] Unknown step, falling back to dashboard");
       session.memberStep = "dashboard";
       sessionStore.set(visitorId, session);
       return showMemberDashboard(res, session, visitorId);
@@ -138,8 +123,6 @@ exports.handleMember = (message, res, session, visitorId) => {
 
 // ----------------------- Dashboard -----------------------
 function showMemberDashboard(res, session, visitorId) {
-  console.log("🔥 [MEMBER] Showing dashboard");
-
   const greeting = `👋 Welcome ${
     session.username || "Member"
   }! How can I assist you today?`;
@@ -162,18 +145,11 @@ function showMemberDashboard(res, session, visitorId) {
   session.memberStep = "dashboard";
   sessionStore.set(visitorId, session);
 
-  console.log(
-    "🔥 [MEMBER] Dashboard payload:",
-    JSON.stringify(payload, null, 2)
-  );
-
   return res.json(payload);
 }
 
 // ----------------------- Membership Status -----------------------
 async function handleMembershipStatus(message, res, session, visitorId) {
-  console.log("🔥 [MEMBER] Membership status called");
-
   try {
     // Get user ID from session
     const userId = session.userId;
@@ -277,9 +253,6 @@ async function handleMembershipStatus(message, res, session, visitorId) {
 
 // ----------------------- Renew Membership -----------------------
 async function handleRenewMembership(message, res, session, visitorId) {
-  console.log("🔥 [MEMBER] Renew membership called with message:", message);
-  console.log("🔥 [MEMBER] Current step:", session.memberStep);
-
   try {
     // Handle "Back to Dashboard" at any point
     if (message === "⬅️ Back to Dashboard") {
@@ -388,7 +361,7 @@ async function handleRenewMembership(message, res, session, visitorId) {
       // Handle different response formats from Zoho
       if (message && typeof message === "object" && message.value) {
         planValue = message.value;
-        console.log("🔥 [MEMBER] Extracted plan value from object:", planValue);
+
         // Find the selected plan by ID
         selectedPlan = session.plansData.find(
           (plan) => plan._id.toString() === planValue
@@ -396,7 +369,6 @@ async function handleRenewMembership(message, res, session, visitorId) {
       }
       // If it's a string, try to match by the display text
       else if (typeof message === "string") {
-        console.log("🔥 [MEMBER] Received string plan value:", message);
         // Find the selected plan by matching the display text
         selectedPlan = session.plansData.find((plan) => {
           const displayText = `${plan.name} - ${plan.period} (${plan.price} INR)`;
@@ -406,7 +378,6 @@ async function handleRenewMembership(message, res, session, visitorId) {
 
       // Validate that a plan is selected
       if (!selectedPlan) {
-        console.log("🔥 [MEMBER] Selected plan not found:", planValue);
         return res.json({
           action: "reply",
           replies: ["Invalid membership plan selected. Please try again."],
@@ -558,9 +529,6 @@ async function handleRenewMembership(message, res, session, visitorId) {
 
 async function handleShowClass(message, res, session, visitorId) {
   try {
-    console.log("🔥 [CLASS] Step:", session.memberStep);
-    console.log("🔥 [CLASS] Message:", message);
-
     // BACK TO DASHBOARD
     if (message === "⬅️ Back to Dashboard") {
       session.memberStep = "dashboard";
@@ -586,9 +554,6 @@ async function handleShowClass(message, res, session, visitorId) {
         suggestions: ["⬅️ Back to Dashboard"],
       });
     }
-
-    console.log("🔥 [CLASS] User found:", user.username);
-    console.log("🔥 [CLASS] User's assignedTrainerId:", user.assignedTrainerId);
 
     // 2. CHECK MEMBERSHIP
     const today = new Date();
@@ -617,11 +582,6 @@ async function handleShowClass(message, res, session, visitorId) {
     let trainer = await Trainer.findById(user.assignedTrainerId);
 
     if (!trainer) {
-      console.log(
-        "❌ [CLASS] Trainer not found with ID:",
-        user.assignedTrainerId
-      );
-
       // Try to find any available trainer as fallback
       const fallbackTrainer = await Trainer.findOne();
       if (!fallbackTrainer) {
@@ -635,22 +595,11 @@ async function handleShowClass(message, res, session, visitorId) {
       trainer = fallbackTrainer;
       user.assignedTrainerId = fallbackTrainer._id;
       await user.save();
-
-      console.log("✅ [CLASS] Assigned fallback trainer:", trainer.name);
     }
-
-    console.log("🔥 [CLASS] Trainer found:", trainer.name);
-    console.log("🔥 [CLASS] Trainer._id:", trainer._id);
-    console.log("🔥 [CLASS] Trainer.userId:", trainer.userId);
 
     // CRITICAL: ClassSchedule.trainerId references Trainer.userId (not Trainer._id)
     // So we need to use trainer.userId to query ClassSchedule
     const classScheduleTrainerId = trainer.userId;
-
-    console.log(
-      "🔥 [CLASS] Using trainer.userId for ClassSchedule queries:",
-      classScheduleTrainerId
-    );
 
     // 5. Ask schedule type
     if (session.memberStep === "show_class") {
@@ -677,8 +626,6 @@ async function handleShowClass(message, res, session, visitorId) {
       const trainerUserId = session.trainerUserId;
       const trainerName = session.trainerName;
 
-      console.log("🔥 [CLASS] Querying classes with trainerId:", trainerUserId);
-
       // TODAY'S CLASS
       if (message === "📅 Today's Class" || message === "Today's Class") {
         const days = [
@@ -692,7 +639,6 @@ async function handleShowClass(message, res, session, visitorId) {
         ];
 
         const currentDay = days[today.getDay()];
-        console.log("🔥 [CLASS] Current day:", currentDay);
 
         // Query using trainer.userId (which is stored in ClassSchedule.trainerId)
         const todayClasses = await ClassSchedule.find({
@@ -700,7 +646,6 @@ async function handleShowClass(message, res, session, visitorId) {
           day: currentDay,
         }).sort({ time: 1 });
 
-        console.log("🔥 [CLASS] Today's classes found:", todayClasses.length);
         if (todayClasses.length > 0) {
           console.log(
             "🔥 [CLASS] Sample class:",
@@ -758,7 +703,6 @@ async function handleShowClass(message, res, session, visitorId) {
           trainerId: trainerUserId,
         }).sort({ time: 1 });
 
-        console.log("🔥 [CLASS] Weekly classes found:", allClasses.length);
         if (allClasses.length > 0) {
           console.log(
             "🔥 [CLASS] Sample class:",
@@ -794,8 +738,6 @@ async function handleShowClass(message, res, session, visitorId) {
           if (!grouped[c.day]) grouped[c.day] = [];
           grouped[c.day].push(c);
         });
-
-        console.log("🔥 [CLASS] Grouped by day:", Object.keys(grouped));
 
         let response = `📅 WEEKLY SCHEDULE\n\n`;
         response += `👨‍🏄 Trainer: ${trainerName}\n\n`;
@@ -858,9 +800,6 @@ async function handleShowClass(message, res, session, visitorId) {
 
 // ----------------------- Update Profile -----------------------
 async function handleUpdateProfile(message, res, session, visitorId) {
-  console.log("🔥 [MEMBER] Update profile called with message:", message);
-  console.log("🔥 [MEMBER] Current step:", session.memberStep);
-
   try {
     // Handle "Back to Dashboard" at any point
     if (message === "⬅️ Back to Dashboard") {
@@ -1159,9 +1098,6 @@ async function handleUpdateProfile(message, res, session, visitorId) {
 
 // ----------------------- BMI Calculator -----------------------
 async function handleBMICalculator(message, res, session, visitorId) {
-  console.log("🔥 [MEMBER] BMI calculator called with message:", message);
-  console.log("🔥 [MEMBER] Current step:", session.memberStep);
-
   try {
     // Handle "Back to Dashboard" at any point
     if (message === "⬅️ Back to Dashboard") {
