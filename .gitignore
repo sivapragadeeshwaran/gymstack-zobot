@@ -1,7 +1,6 @@
 # Node dependencies
-node_modules/
-client/client/node_modules/
-server/node_modules/
+
+
 
 # Build outputs
 dist/

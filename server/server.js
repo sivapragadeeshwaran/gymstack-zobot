@@ -58,7 +58,6 @@ app.use(
     origin: [
       "http://localhost:5173",
       "https://gymstack-a-full-stack-gym-management-5kco.onrender.com",
-      "https://easy-buses-invite.loca.lt",
     ],
     methods: ["GET", "POST", "PUT", "DELETE"], // FIXED
     credentials: true,
