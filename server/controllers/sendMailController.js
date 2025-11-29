@@ -3,16 +3,19 @@ const nodemailer = require("nodemailer");
 
 // Create a transporter object using SMTP transport
 const transporter = nodemailer.createTransport({
-  service: "gmail", // or another email service
+  service: "gmail",
+  host: "smtp.gmail.com", // ADD THIS
+  port: 587, // ADD THIS
+  secure: false, // ADD THIS
   auth: {
-    user: process.env.EMAIL_USER, // Your email address
-    pass: process.env.EMAIL_PASS, // Your email password or app password
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
-  pool: true, // Use connection pooling
-  maxConnections: 5, // Maximum number of connections to create
-  maxMessages: 100, // Limit the number of messages sent through a single connection
-  rateDelta: 1000, // Time in ms to wait between sending messages
-  rateLimit: 5, // Limit the number of messages sent per rateDelta
+  pool: true,
+  maxConnections: 5,
+  maxMessages: 100,
+  rateDelta: 1000,
+  rateLimit: 5,
 });
 
 // Function to send email to a member
