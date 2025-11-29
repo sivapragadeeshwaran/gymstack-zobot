@@ -67,6 +67,7 @@ exports.handleZobot = async (req, res) => {
     return updatedSession;
   };
 
+  // ✅ FIXED: Show welcome with email request immediately on first message
   if (!session.welcomeShown) {
     updateSession({ welcomeShown: true });
 
@@ -74,7 +75,7 @@ exports.handleZobot = async (req, res) => {
       action: "reply",
       replies: [
         {
-          text: "👋 Welcome to Strength Zone Gym! 💪\nPlease provide your email address to continue.",
+          text: "👋 Welcome to Strength Zone Gym! 💪",
           image: WELCOME_IMAGE_URL,
           image_position: "fit",
         },
@@ -82,6 +83,9 @@ exports.handleZobot = async (req, res) => {
           type: "video",
           text: "Watch our intro video to see what makes Strength Zone Gym special!",
           url: WELCOME_VIDEO_URL,
+        },
+        {
+          text: "Please provide your email address to continue:",
         },
       ],
     });
@@ -116,7 +120,7 @@ exports.handleZobot = async (req, res) => {
     });
   }
 
-  // ✅ CRITICAL FIX: Route authenticated users
+  // ✅ Route authenticated users to their role controllers
   if (session.isAuthenticated && session.role && session.authenticatedEmail) {
     console.log(`✅ User authenticated, routing to ${session.role} controller`);
 
@@ -137,6 +141,7 @@ exports.handleZobot = async (req, res) => {
     }
   }
 
+  // ✅ Extract email from user message
   const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
   const emailMatch = msg.match(emailRegex);
 
@@ -150,17 +155,18 @@ exports.handleZobot = async (req, res) => {
 
     return res.json({
       action: "reply",
-      replies: ["Please provide your email address to continue:"],
+      replies: ["Please provide a valid email address to continue:"],
     });
   }
 
+  // ✅ Check if user exists in database
   try {
     console.log("🔍 Querying database for:", userEmail);
 
     const user = await User.findOne({ email: userEmail });
 
     if (!user) {
-      console.log("❌ User not found");
+      console.log("❌ User not found - routing to new visitor");
       return newVisitorController.handleNewVisitor(
         msg,
         res,
@@ -175,7 +181,7 @@ exports.handleZobot = async (req, res) => {
       username: user.username,
     });
 
-    // ✅ CRITICAL FIX: Set role-specific step BEFORE marking authenticated
+    // ✅ Update session with user data and mark as authenticated
     updateSession({
       stage: "dashboard",
       role: user.role,
@@ -187,7 +193,6 @@ exports.handleZobot = async (req, res) => {
       membershipPlan: user.membershipPlan,
       trainerAssigned: user.trainerAssigned,
       feeStatus: user.feeStatus,
-      // ✅ Initialize role-specific steps
       adminStep: user.role === "admin" ? "dashboard" : null,
       trainerStep: user.role === "trainer" ? "dashboard" : null,
       memberStep: user.role === "user" ? "dashboard" : null,
@@ -195,7 +200,7 @@ exports.handleZobot = async (req, res) => {
 
     console.log(`✅ Authentication successful - Role: ${user.role}`);
 
-    // ✅ CRITICAL FIX: Send dashboard and return (don't route to controller yet)
+    // ✅ Send appropriate dashboard based on user role
     if (user.role === "admin") {
       console.log("✅ Sending ADMIN dashboard");
       return res.json({
