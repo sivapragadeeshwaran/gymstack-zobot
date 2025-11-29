@@ -604,10 +604,7 @@ function handleNameInput(message, res, session, visitorId) {
 
 // Handle email input
 async function handleEmailInput(message, res, session, visitorId) {
-  // Simple email validation
   const emailRegex = /\S+@\S+\.\S+/;
-
-  // Extract email from message
   const emailMatch = message.match(emailRegex);
   const email = emailMatch ? emailMatch[0].trim() : message.trim();
 
@@ -638,8 +635,31 @@ async function handleEmailInput(message, res, session, visitorId) {
   session.visitorStep = "free_trial_phone";
   sessionStore.set(visitorId, session);
 
-  // ✅ SEND RESPONSE FIRST (User sees instant response)
-  const response = res.json({
+  // ✅ Build mail options BEFORE response
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || "noreply@gym.com",
+    to: email,
+    subject: "Your OTP for Free Trial Registration",
+    text: `Your OTP for free trial registration is: ${emailOtp}. Valid for 10 minutes.`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <h2 style="color: #4CAF50; text-align: center;">OTP Verification</h2>
+        <p>Hello,</p>
+        <p>Thank you for booking a free trial at our gym!</p>
+        <p>Your OTP for email verification is:</p>
+        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 5px; text-align: center; margin: 20px 0;">
+          <h1 style="color: #4CAF50; margin: 0; font-size: 36px; letter-spacing: 5px;">${emailOtp}</h1>
+        </div>
+        <p><strong>This OTP is valid for 10 minutes.</strong></p>
+        <p>If you didn't request this OTP, please ignore this email.</p>
+        <p>Best regards,<br>The Gym Team</p>
+      </div>
+    `,
+  };
+
+  // ✅ SEND RESPONSE IMMEDIATELY
+  console.log("📧 [FREE TRIAL] Sending response first, then email");
+  res.json({
     action: "reply",
     replies: [
       `📧 Verification code is being sent to ${email}\n\nIt may take a few seconds to arrive. Check your inbox and spam folder.\n\n📱 Meanwhile, please enter your phone number:`,
@@ -654,31 +674,12 @@ async function handleEmailInput(message, res, session, visitorId) {
     suggestions: ["⬅️ Back to Main Menu"],
   });
 
-  // ✅ CRITICAL FIX: Wrap email send in setImmediate
-  // This ensures response is sent BEFORE email sending starts
+  // ✅ SEND EMAIL IN BACKGROUND (after response is sent)
   setImmediate(() => {
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || "noreply@gym.com",
-      to: email,
-      subject: "Your OTP for Free Trial Registration",
-      text: `Your OTP for free trial registration is: ${emailOtp}. Valid for 10 minutes.`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-          <h2 style="color: #4CAF50; text-align: center;">OTP Verification</h2>
-          <p>Hello,</p>
-          <p>Thank you for booking a free trial at our gym!</p>
-          <p>Your OTP for email verification is:</p>
-          <div style="background-color: #f9f9f9; padding: 20px; border-radius: 5px; text-align: center; margin: 20px 0;">
-            <h1 style="color: #4CAF50; margin: 0; font-size: 36px; letter-spacing: 5px;">${emailOtp}</h1>
-          </div>
-          <p><strong>This OTP is valid for 10 minutes.</strong></p>
-          <p>If you didn't request this OTP, please ignore this email.</p>
-          <p>Best regards,<br>The Gym Team</p>
-        </div>
-      `,
-    };
-
-    console.log("📧 [FREE TRIAL] Sending OTP email in background to:", email);
+    console.log(
+      "📧 [FREE TRIAL] Now sending OTP email in background to:",
+      email
+    );
 
     transporter
       .sendMail(mailOptions)
@@ -695,7 +696,8 @@ async function handleEmailInput(message, res, session, visitorId) {
       });
   });
 
-  return response;
+  // ✅ IMPORTANT: Don't return anything after res.json()
+  // The response has already been sent
 }
 // Handle phone input
 function handlePhoneInput(message, res, session, visitorId) {
@@ -855,12 +857,10 @@ function handleEmailOTPVerification(message, res, session, visitorId) {
 function handleResendOTP(res, session, visitorId) {
   console.log("🔥 [FREE TRIAL] Resending OTP");
 
-  // Check if too many resend requests (prevent spam)
   const now = Date.now();
   const lastResendTime = session.freeTrialData.lastResendTime || 0;
   const timeSinceLastResend = now - lastResendTime;
 
-  // Must wait at least 30 seconds between resend requests
   if (timeSinceLastResend < 30000) {
     const waitSeconds = Math.ceil((30000 - timeSinceLastResend) / 1000);
     return res.json({
@@ -879,17 +879,15 @@ function handleResendOTP(res, session, visitorId) {
     });
   }
 
-  // Generate new OTP
   const emailOtp = generateOtp();
   session.freeTrialData.emailOTP = emailOtp;
   session.freeTrialData.otpGeneratedAt = now;
   session.freeTrialData.lastResendTime = now;
-  session.freeTrialData.otpAttempts = 0; // Reset attempts
+  session.freeTrialData.otpAttempts = 0;
   sessionStore.set(visitorId, session);
 
   console.log("🔥 [FREE TRIAL] New OTP generated:", emailOtp);
 
-  // Send new OTP email in background (non-blocking)
   const mailOptions = {
     from: process.env.EMAIL_FROM || "noreply@gym.com",
     to: session.freeTrialData.email,
@@ -910,20 +908,8 @@ function handleResendOTP(res, session, visitorId) {
     `,
   };
 
-  // Send in background
-  console.log("📧 [FREE TRIAL] Sending NEW OTP email in background");
-  transporter
-    .sendMail(mailOptions)
-    .then((info) => {
-      console.log("✅ [FREE TRIAL] New OTP email sent successfully!");
-      console.log("   Message ID:", info.messageId);
-    })
-    .catch((error) => {
-      console.error("❌ [FREE TRIAL] Failed to send new OTP email!");
-      console.error("   Error:", error.message);
-    });
-
-  return res.json({
+  // ✅ SEND RESPONSE FIRST
+  res.json({
     action: "reply",
     replies: [
       `📧 A new OTP has been sent to ${session.freeTrialData.email}\n\n🔐 Please enter the new OTP (it may take 10-30 seconds to arrive):`,
@@ -936,6 +922,21 @@ function handleResendOTP(res, session, visitorId) {
       mandatory: true,
     },
     suggestions: ["⬅️ Back to Main Menu"],
+  });
+
+  // ✅ SEND EMAIL IN BACKGROUND
+  setImmediate(() => {
+    console.log("📧 [FREE TRIAL] Sending NEW OTP email in background");
+    transporter
+      .sendMail(mailOptions)
+      .then((info) => {
+        console.log("✅ [FREE TRIAL] New OTP email sent successfully!");
+        console.log("   Message ID:", info.messageId);
+      })
+      .catch((error) => {
+        console.error("❌ [FREE TRIAL] Failed to send new OTP email!");
+        console.error("   Error:", error.message);
+      });
   });
 }
 
