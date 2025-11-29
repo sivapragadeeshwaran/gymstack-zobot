@@ -106,6 +106,8 @@ exports.handleZobot = async (req, res) => {
       email: null,
       authenticatedEmail: null,
       username: null,
+      stage: null,
+      isAuthenticated: false,
     });
 
     return res.json({
@@ -115,11 +117,11 @@ exports.handleZobot = async (req, res) => {
   }
 
   // ========================================
-  // 🔧 FIX #5: Route authenticated users
+  // 🔧 FIX #5: Route ALREADY authenticated users to controllers
   // ========================================
-  if (session.role && session.authenticatedEmail) {
+  if (session.role && session.authenticatedEmail && session.isAuthenticated) {
     console.log(
-      `🎯 Routing to ${session.role} controller for email: ${session.authenticatedEmail}`
+      `🎯 Routing authenticated user to ${session.role} controller for email: ${session.authenticatedEmail}`
     );
 
     switch (session.role) {
@@ -131,7 +133,12 @@ exports.handleZobot = async (req, res) => {
       case "user":
         return memberController.handleMember(msg, res, session, sessionId);
       default:
-        updateSession({ role: null, userId: null, email: null });
+        updateSession({
+          role: null,
+          userId: null,
+          email: null,
+          isAuthenticated: false,
+        });
         return res.json({
           action: "reply",
           replies: ["Your role is not recognized. Please contact support."],
@@ -156,7 +163,7 @@ exports.handleZobot = async (req, res) => {
     userEmail = session.authenticatedEmail;
     console.log("📧 Using authenticated email from session:", userEmail);
   } else {
-    // No email available - ask for it or route to new visitor
+    // No email available - route to new visitor controller
     console.log("❓ No email found - routing to new visitor controller");
     return newVisitorController.handleNewVisitor(msg, res, session, sessionId);
   }
@@ -189,39 +196,58 @@ exports.handleZobot = async (req, res) => {
     // 🔧 FIX #8: Store email ONLY after successful authentication
     // ========================================
     updateSession({
-      stage: "dashboard",
+      stage: "authenticated",
       role: user.role,
       userId: user._id,
       authenticatedEmail: user.email, // Store the VERIFIED email
       username: user.username,
+      isAuthenticated: true, // Mark as authenticated
     });
-
-    // Send role-specific greeting
-    const greetings = {
-      admin: `👋 Welcome Admin ${user.username}! How can I assist you today?`,
-      trainer: `💪 Hello Trainer ${user.username}! What would you like to manage?`,
-      member: `🏋️ Hi ${user.username}! How can I help you with your fitness goals?`,
-      user: `👤 Welcome ${user.username}! How can I assist you today?`,
-    };
 
     console.log(`✅ Authentication successful - Role: ${user.role}`);
 
-    // Route to appropriate controller
-    switch (user.role) {
-      case "admin":
-        return adminController.handleAdmin(msg, res, session, sessionId);
-      case "trainer":
-        return trainerController.handleTrainer(msg, res, session, sessionId);
-      case "member":
-      case "user":
-        return memberController.handleMember(msg, res, session, sessionId);
-      default:
-        updateSession({ role: null, userId: null, email: null });
-        return res.json({
-          action: "reply",
-          replies: [greetings.user],
-        });
-    }
+    // ========================================
+    // 🔧 FIX #9: Send role-specific welcome message with menu
+    // ========================================
+    const welcomeMessages = {
+      admin: {
+        text: `👋 Welcome Admin ${user.username}!\n\nYou have access to:\n• Add New Member\n• Add New Trainer\n• Add New Admin\n• View Members\n• View Trainers\n• View Admins\n• Manage Plans\n\nWhat would you like to do?`,
+        buttons: [
+          { text: "Add Member", value: "add member" },
+          { text: "Add Trainer", value: "add trainer" },
+          { text: "View Members", value: "view members" },
+          { text: "Manage Plans", value: "manage plans" },
+        ],
+      },
+      trainer: {
+        text: `💪 Hello Trainer ${user.username}!\n\nYou can:\n• View Your Schedule\n• View Assigned Members\n• Update Workout Plans\n• Mark Attendance\n\nWhat would you like to manage?`,
+        buttons: [
+          { text: "My Schedule", value: "my schedule" },
+          { text: "My Members", value: "my members" },
+          { text: "Update Plans", value: "update plans" },
+        ],
+      },
+      member: {
+        text: `🏋️ Hi ${user.username}!\n\nWelcome to your fitness journey!\n• View Your Workout Plan\n• Check Your Progress\n• View Schedule\n• Contact Trainer\n\nHow can I help you today?`,
+        buttons: [
+          { text: "My Workout", value: "my workout" },
+          { text: "My Progress", value: "my progress" },
+          { text: "Schedule", value: "my schedule" },
+        ],
+      },
+    };
+
+    const welcomeConfig = welcomeMessages[user.role] || welcomeMessages.member;
+
+    // Return welcome message (NOT routing to controller yet)
+    return res.json({
+      action: "reply",
+      replies: [welcomeConfig.text],
+      suggestions: welcomeConfig.buttons,
+    });
+
+    // NOTE: Next message from user will be routed to appropriate controller
+    // because session.isAuthenticated is now true
   } catch (err) {
     console.error("❌ Database error:", err);
     return res.json({
