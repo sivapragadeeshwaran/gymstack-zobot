@@ -606,8 +606,13 @@ function handleNameInput(message, res, session, visitorId) {
 async function handleEmailInput(message, res, session, visitorId) {
   // Simple email validation
   const emailRegex = /\S+@\S+\.\S+/;
-  if (!emailRegex.test(message)) {
-    const response = {
+
+  // Extract email from message
+  const emailMatch = message.match(emailRegex);
+  const email = emailMatch ? emailMatch[0].trim() : message.trim();
+
+  if (!emailRegex.test(email)) {
+    return res.json({
       action: "reply",
       replies: ["Please enter a valid email address:"],
       input: {
@@ -618,29 +623,23 @@ async function handleEmailInput(message, res, session, visitorId) {
         mandatory: true,
       },
       suggestions: ["⬅️ Back to Main Menu"],
-    };
-
-    return res.json(response);
+    });
   }
 
   // Store email and generate OTP
-  session.freeTrialData.email = message.trim();
+  session.freeTrialData.email = email;
   const emailOtp = generateOtp();
   session.freeTrialData.emailOTP = emailOtp;
+  session.freeTrialData.otpGeneratedAt = Date.now(); // Track when OTP was created
 
-  console.log(
-    "🔥 [FREE TRIAL] Generated OTP:",
-    emailOtp,
-    "for email:",
-    message.trim()
-  );
+  console.log("🔥 [FREE TRIAL] Generated OTP:", emailOtp, "for email:", email);
 
-  // ✅ FIXED: Send OTP via email and WAIT for it to complete
+  // ✅ CRITICAL: Send email in BACKGROUND (non-blocking)
   const mailOptions = {
     from: process.env.EMAIL_FROM || "noreply@gym.com",
-    to: session.freeTrialData.email,
+    to: email,
     subject: "Your OTP for Free Trial Registration",
-    text: `Your OTP for free trial registration is: ${emailOtp}`,
+    text: `Your OTP for free trial registration is: ${emailOtp}. Valid for 10 minutes.`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
         <h2 style="color: #4CAF50; text-align: center;">OTP Verification</h2>
@@ -657,69 +656,45 @@ async function handleEmailInput(message, res, session, visitorId) {
     `,
   };
 
-  try {
-    // ✅ CRITICAL FIX: Use await to wait for email to send
-    console.log(
-      "📧 [FREE TRIAL] Attempting to send OTP email to:",
-      session.freeTrialData.email
-    );
-    const info = await transporter.sendMail(mailOptions);
-    console.log("✅ [FREE TRIAL] OTP email sent successfully!");
-    console.log("   Message ID:", info.messageId);
-    console.log("   Sent to:", session.freeTrialData.email);
-    console.log("   OTP:", emailOtp);
+  // ✅ Send email asynchronously WITHOUT waiting
+  console.log("📧 [FREE TRIAL] Sending OTP email in background to:", email);
+  transporter
+    .sendMail(mailOptions)
+    .then((info) => {
+      console.log("✅ [FREE TRIAL] OTP email sent successfully!");
+      console.log("   Message ID:", info.messageId);
+      console.log("   Sent to:", email);
+      console.log("   OTP:", emailOtp);
+    })
+    .catch((error) => {
+      console.error("❌ [FREE TRIAL] Failed to send OTP email!");
+      console.error("   Error:", error.message);
+      console.error("   Email address:", email);
+    });
 
-    // Update session AFTER email is sent
-    session.visitorStep = "free_trial_phone";
-    sessionStore.set(visitorId, session);
+  // ✅ IMMEDIATELY move to next step WITHOUT waiting for email
+  session.visitorStep = "free_trial_phone";
+  sessionStore.set(visitorId, session);
 
-    const response = {
-      action: "reply",
-      replies: [
-        `Great! We've sent a verification code to ${session.freeTrialData.email}.\n\nPlease check your inbox (and spam folder) for the OTP.\n\nNow please enter your phone number:`,
-      ],
-      input: {
-        type: "tel",
-        name: "phone",
-        placeholder: "+91 9876543210",
-        label: "Phone Number",
-        mandatory: true,
-      },
-      suggestions: ["⬅️ Back to Main Menu"],
-    };
-
-    return res.json(response);
-  } catch (error) {
-    console.error("❌ [FREE TRIAL] Failed to send OTP email!");
-    console.error("   Error:", error.message);
-    console.error("   Error code:", error.code);
-    console.error("   Email address:", session.freeTrialData.email);
-
-    // ⚠️ IMPROVED: Show error to user but allow them to continue with test OTP
-    const response = {
-      action: "reply",
-      replies: [
-        `⚠️ We couldn't send the verification email to ${session.freeTrialData.email}.\n\nPossible reasons:\n• Email address might be incorrect\n• Temporary email service issue\n\nYou can use test OTP: 12345 to continue.\n\nNow please enter your phone number:`,
-      ],
-      input: {
-        type: "tel",
-        name: "phone",
-        placeholder: "+91 9876543210",
-        label: "Phone Number",
-        mandatory: true,
-      },
-      suggestions: ["⬅️ Back to Main Menu"],
-    };
-
-    // Still update session so user can proceed with test OTP
-    session.visitorStep = "free_trial_phone";
-    sessionStore.set(visitorId, session);
-
-    return res.json(response);
-  }
+  return res.json({
+    action: "reply",
+    replies: [
+      `📧 Verification code is being sent to ${email}\n\nIt may take a few seconds to arrive. Check your inbox and spam folder.\n\n📱 Meanwhile, please enter your phone number:`,
+    ],
+    input: {
+      type: "tel",
+      name: "phone",
+      placeholder: "+91 9876543210",
+      label: "Phone Number",
+      mandatory: true,
+    },
+    suggestions: ["⬅️ Back to Main Menu"],
+  });
 }
 // Handle phone input
 function handlePhoneInput(message, res, session, visitorId) {
+  console.log("🔥 [FREE TRIAL] handlePhoneInput - Message:", message);
+
   // Clean the phone number by removing all non-digit characters
   const cleanPhone = message.replace(/\D/g, "");
 
@@ -733,9 +708,11 @@ function handlePhoneInput(message, res, session, visitorId) {
   const phoneRegex = /^\d{10}$/;
 
   if (!phoneRegex.test(finalPhone)) {
-    const response = {
+    return res.json({
       action: "reply",
-      replies: ["Please enter a valid 10-digit phone number:"],
+      replies: [
+        "❌ Invalid phone number.\n\nPlease enter a valid 10-digit phone number:",
+      ],
       input: {
         type: "tel",
         name: "phone",
@@ -744,9 +721,7 @@ function handlePhoneInput(message, res, session, visitorId) {
         mandatory: true,
       },
       suggestions: ["⬅️ Back to Main Menu"],
-    };
-
-    return res.json(response);
+    });
   }
 
   // Store phone and move to OTP verification
@@ -754,31 +729,98 @@ function handlePhoneInput(message, res, session, visitorId) {
   session.visitorStep = "free_trial_email_otp";
   sessionStore.set(visitorId, session);
 
-  const response = {
+  console.log("✅ [FREE TRIAL] Phone saved, moving to OTP verification");
+
+  return res.json({
     action: "reply",
     replies: [
-      "We've sent a verification code to your email. Please enter the OTP :",
+      `✅ Phone number saved: ${finalPhone}\n\n🔐 Please enter the OTP sent to ${session.freeTrialData.email}\n\n⏱️ Check your inbox (it may take 10-30 seconds to arrive)`,
     ],
-    suggestions: ["⬅️ Back to Main Menu"],
-  };
-
-  return res.json(response);
+    input: {
+      type: "text",
+      name: "otp",
+      placeholder: "Enter 6-digit OTP",
+      label: "Verification Code",
+      mandatory: true,
+    },
+    suggestions: ["Resend OTP", "⬅️ Back to Main Menu"],
+  });
 }
-
 // Handle email OTP verification
 function handleEmailOTPVerification(message, res, session, visitorId) {
-  // Check if OTP matches (allow 12345 for testing)
-  if (message !== session.freeTrialData.emailOTP && message !== "12345") {
-    const response = {
-      action: "reply",
-      replies: ["Invalid OTP. Please try again (Use 12345 for testing):"],
-      suggestions: ["⬅️ Back to Main Menu"],
-    };
+  console.log("🔥 [FREE TRIAL] OTP Verification - Received:", message);
 
-    return res.json(response);
+  // Handle "Resend OTP" request
+  if (message === "Resend OTP") {
+    return handleResendOTP(res, session, visitorId);
   }
 
-  // OTP verified, move to date/time selection
+  // Clean the OTP input (remove spaces, dashes, etc.)
+  const cleanOTP = message.replace(/\D/g, "");
+
+  // Check if OTP is expired (10 minutes = 600000 ms)
+  const otpAge = Date.now() - (session.freeTrialData.otpGeneratedAt || 0);
+  const isExpired = otpAge > 10 * 60 * 1000;
+
+  if (isExpired) {
+    console.log("⏱️ [FREE TRIAL] OTP expired");
+    return res.json({
+      action: "reply",
+      replies: [
+        "⏱️ Your OTP has expired (valid for 10 minutes).\n\nPlease request a new one:",
+      ],
+      input: {
+        type: "text",
+        name: "otp",
+        placeholder: "Enter 6-digit OTP",
+        label: "Verification Code",
+        mandatory: true,
+      },
+      suggestions: ["Resend OTP", "⬅️ Back to Main Menu"],
+    });
+  }
+
+  // Verify OTP
+  if (cleanOTP !== session.freeTrialData.emailOTP) {
+    console.log("❌ [FREE TRIAL] Invalid OTP entered");
+
+    // Track failed attempts
+    session.freeTrialData.otpAttempts =
+      (session.freeTrialData.otpAttempts || 0) + 1;
+    sessionStore.set(visitorId, session);
+
+    // Block after 5 failed attempts
+    if (session.freeTrialData.otpAttempts >= 5) {
+      console.log("🚫 [FREE TRIAL] Too many failed attempts");
+      return res.json({
+        action: "reply",
+        replies: ["❌ Too many failed attempts.\n\nPlease request a new OTP:"],
+        suggestions: ["Resend OTP", "⬅️ Back to Main Menu"],
+      });
+    }
+
+    return res.json({
+      action: "reply",
+      replies: [
+        `❌ Invalid OTP. (${
+          5 - session.freeTrialData.otpAttempts
+        } attempts remaining)\n\nPlease try again:`,
+      ],
+      input: {
+        type: "text",
+        name: "otp",
+        placeholder: "Enter 6-digit OTP",
+        label: "Verification Code",
+        mandatory: true,
+      },
+      suggestions: ["Resend OTP", "⬅️ Back to Main Menu"],
+    });
+  }
+
+  console.log("✅ [FREE TRIAL] OTP verified successfully");
+
+  // Reset OTP attempts
+  session.freeTrialData.otpAttempts = 0;
   session.freeTrialData.emailVerified = true;
   session.visitorStep = "free_trial_datetime";
   sessionStore.set(visitorId, session);
@@ -786,11 +828,11 @@ function handleEmailOTPVerification(message, res, session, visitorId) {
   // Generate time slots for the next 5 days
   const slots = generateTimeSlots();
 
-  const response = {
+  return res.json({
     platform: "ZOHOSALESIQ",
     action: "reply",
     replies: [
-      "Email verified! Now please select a date and time for your free trial.",
+      "✅ Email verified successfully!\n\n📅 Please select a date and time for your free trial:",
     ],
     input: {
       type: "date-timeslots",
@@ -800,9 +842,95 @@ function handleEmailOTPVerification(message, res, session, visitorId) {
       slots: slots,
     },
     suggestions: ["⬅️ Back to Main Menu"],
+  });
+}
+
+// Handle resend OTP
+function handleResendOTP(res, session, visitorId) {
+  console.log("🔥 [FREE TRIAL] Resending OTP");
+
+  // Check if too many resend requests (prevent spam)
+  const now = Date.now();
+  const lastResendTime = session.freeTrialData.lastResendTime || 0;
+  const timeSinceLastResend = now - lastResendTime;
+
+  // Must wait at least 30 seconds between resend requests
+  if (timeSinceLastResend < 30000) {
+    const waitSeconds = Math.ceil((30000 - timeSinceLastResend) / 1000);
+    return res.json({
+      action: "reply",
+      replies: [
+        `⏱️ Please wait ${waitSeconds} seconds before requesting a new OTP.\n\nEnter your current OTP:`,
+      ],
+      input: {
+        type: "text",
+        name: "otp",
+        placeholder: "Enter 6-digit OTP",
+        label: "Verification Code",
+        mandatory: true,
+      },
+      suggestions: ["⬅️ Back to Main Menu"],
+    });
+  }
+
+  // Generate new OTP
+  const emailOtp = generateOtp();
+  session.freeTrialData.emailOTP = emailOtp;
+  session.freeTrialData.otpGeneratedAt = now;
+  session.freeTrialData.lastResendTime = now;
+  session.freeTrialData.otpAttempts = 0; // Reset attempts
+  sessionStore.set(visitorId, session);
+
+  console.log("🔥 [FREE TRIAL] New OTP generated:", emailOtp);
+
+  // Send new OTP email in background (non-blocking)
+  const mailOptions = {
+    from: process.env.EMAIL_FROM || "noreply@gym.com",
+    to: session.freeTrialData.email,
+    subject: "Your NEW OTP for Free Trial Registration",
+    text: `Your NEW OTP for free trial registration is: ${emailOtp}. Valid for 10 minutes.`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <h2 style="color: #4CAF50; text-align: center;">New OTP Verification</h2>
+        <p>Hello,</p>
+        <p>You requested a new OTP for free trial registration.</p>
+        <p>Your NEW OTP is:</p>
+        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 5px; text-align: center; margin: 20px 0;">
+          <h1 style="color: #4CAF50; margin: 0; font-size: 36px; letter-spacing: 5px;">${emailOtp}</h1>
+        </div>
+        <p><strong>This OTP is valid for 10 minutes.</strong></p>
+        <p>Best regards,<br>The Gym Team</p>
+      </div>
+    `,
   };
 
-  return res.json(response);
+  // Send in background
+  console.log("📧 [FREE TRIAL] Sending NEW OTP email in background");
+  transporter
+    .sendMail(mailOptions)
+    .then((info) => {
+      console.log("✅ [FREE TRIAL] New OTP email sent successfully!");
+      console.log("   Message ID:", info.messageId);
+    })
+    .catch((error) => {
+      console.error("❌ [FREE TRIAL] Failed to send new OTP email!");
+      console.error("   Error:", error.message);
+    });
+
+  return res.json({
+    action: "reply",
+    replies: [
+      `📧 A new OTP has been sent to ${session.freeTrialData.email}\n\n🔐 Please enter the new OTP (it may take 10-30 seconds to arrive):`,
+    ],
+    input: {
+      type: "text",
+      name: "otp",
+      placeholder: "Enter 6-digit OTP",
+      label: "Verification Code",
+      mandatory: true,
+    },
+    suggestions: ["⬅️ Back to Main Menu"],
+  });
 }
 
 // Helper function to generate time slots
