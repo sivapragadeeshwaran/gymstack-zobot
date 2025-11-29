@@ -7,19 +7,14 @@ const problemReportController = require("./problemReportController");
 
 // Helper function to extract time from Zoho timeslots response
 function extractTimeFromZohoResponse(message) {
-  // If message is an object with value property
   if (message && typeof message === "object" && message.value) {
     return message.value;
   }
 
-  // If message is a string in the format "Thursday December 4, 2025 at 05:00 PM GMT+05:30 India Standard Time (Asia/Calcutta)"
   if (typeof message === "string") {
-    // Extract time part using regex
     const timeMatch = message.match(/(\d{1,2}:\d{2}\s[AP]M)/);
     if (timeMatch) {
-      const timeStr = timeMatch[1]; // e.g., "05:00 PM"
-
-      // Convert to 24-hour format
+      const timeStr = timeMatch[1];
       const [time, period] = timeStr.split(" ");
       let [hours, minutes] = time.split(":").map(Number);
 
@@ -29,13 +24,11 @@ function extractTimeFromZohoResponse(message) {
         hours = 0;
       }
 
-      // Format as HH:MM
       return `${hours.toString().padStart(2, "0")}:${minutes
         .toString()
         .padStart(2, "0")}`;
     }
 
-    // Try to extract 24-hour format directly
     const time24Match = message.match(/(\d{1,2}:\d{2})/);
     if (time24Match) {
       return time24Match[1];
@@ -45,7 +38,6 @@ function extractTimeFromZohoResponse(message) {
   return null;
 }
 
-// Helper function to get the next date for a given day
 function getNextDateForDay(day) {
   const days = [
     "Sunday",
@@ -57,13 +49,11 @@ function getNextDateForDay(day) {
     "Saturday",
   ];
   const today = new Date();
-  const todayDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const todayDay = today.getDay();
   const targetDay = days.indexOf(day);
 
-  // Calculate days to add
   let daysToAdd = (targetDay - todayDay + 7) % 7;
 
-  // If the target day is today, add 7 days to get next week
   if (daysToAdd === 0) {
     daysToAdd = 7;
   }
@@ -73,8 +63,7 @@ function getNextDateForDay(day) {
   return nextDate;
 }
 
-// ----------------------- Helper Function to Get Trainer -----------------------
-async function getTrainerFromSession(session, visitorId) {
+async function getTrainerFromSession(session, sessionId) {
   try {
     const userId = session.userId;
 
@@ -89,7 +78,7 @@ async function getTrainerFromSession(session, visitorId) {
     }
 
     session.trainerId = trainer._id;
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     return { trainer };
   } catch (error) {
@@ -99,98 +88,103 @@ async function getTrainerFromSession(session, visitorId) {
 }
 
 // ----------------------- Main Handler -----------------------
-exports.handleTrainer = (message, res, session, visitorId) => {
+exports.handleTrainer = (message, res, session, sessionId) => {
+  console.log("🎯 [TRAINER] Handler called");
+  console.log("🎯 [TRAINER] Current step:", session.trainerStep);
+  console.log("🎯 [TRAINER] Message:", message);
+
   if (!session.trainerStep) {
     session.trainerStep = "dashboard";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
   }
 
   const msg = (message || "").toString().trim();
 
-  if (msg === "⬅️ Back to Dashboard") {
+  if (msg.includes("Back to Dashboard") || msg.includes("⬅️")) {
     session.trainerStep = "dashboard";
-    sessionStore.set(visitorId, session);
-    return showTrainerDashboard(res, session, visitorId);
+    session.problemReportStep = null;
+    sessionStore.set(sessionId, session);
+    return showTrainerDashboard(res, session, sessionId);
   }
 
   if (session.trainerStep === "dashboard") {
     switch (msg) {
       case "👥 View Members":
         session.trainerStep = "view_members";
-        sessionStore.set(visitorId, session);
-        return handleViewMembers(msg, res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleViewMembers(msg, res, session, sessionId);
       case "📝 Update Profile":
         session.trainerStep = "update_profile";
-        sessionStore.set(visitorId, session);
-        return handleUpdateProfile(msg, res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleUpdateProfile(msg, res, session, sessionId);
       case "📅 Add Class Schedule":
         session.trainerStep = "add_class_title";
-        sessionStore.set(visitorId, session);
-        return handleAddClassSchedule(msg, res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleAddClassSchedule(msg, res, session, sessionId);
       case "🚨 Report an Issue":
         session.trainerStep = "problem_report";
-        sessionStore.set(visitorId, session);
+        session.problemReportStep = null; // Reset problem report flow
+        sessionStore.set(sessionId, session);
         return problemReportController.handleProblemReport(
-          msg,
+          "",
           res,
           session,
-          visitorId
+          sessionId
         );
       case "🤖 Talk to AI Assistant":
         session.trainerStep = "ai_assistant";
-        sessionStore.set(visitorId, session);
-        return handleAIAssistant(msg, res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleAIAssistant(msg, res, session, sessionId);
       default:
-        return showTrainerDashboard(res, session, visitorId);
+        return showTrainerDashboard(res, session, sessionId);
     }
+  }
+
+  // If in problem report flow, handle it
+  if (session.trainerStep === "problem_report" || session.problemReportStep) {
+    return problemReportController.handleProblemReport(
+      msg,
+      res,
+      session,
+      sessionId
+    );
   }
 
   switch (session.trainerStep) {
     case "view_members":
-      return handleViewMembers(msg, res, session, visitorId);
+      return handleViewMembers(msg, res, session, sessionId);
 
     case "update_profile":
     case "profile_field_select":
     case "profile_field_update":
     case "profile_update_confirm":
-      return handleUpdateProfile(msg, res, session, visitorId);
+      return handleUpdateProfile(msg, res, session, sessionId);
 
     case "add_class_title":
     case "add_class_day":
     case "add_class_time":
     case "add_class_notes":
     case "add_class_confirm":
-      return handleAddClassSchedule(msg, res, session, visitorId);
-
-    case "problem_report":
-    case "problem_report_name":
-    case "problem_report_email":
-    case "problem_report_description":
-    case "problem_report_confirm":
-      return problemReportController.handleProblemReport(
-        msg,
-        res,
-        session,
-        visitorId
-      );
+      return handleAddClassSchedule(msg, res, session, sessionId);
 
     case "ai_assistant":
-      return handleAIAssistant(msg, res, session, visitorId);
+      return handleAIAssistant(msg, res, session, sessionId);
 
     default:
       session.trainerStep = "dashboard";
-      sessionStore.set(visitorId, session);
-      return showTrainerDashboard(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return showTrainerDashboard(res, session, sessionId);
   }
 };
 
 // ----------------------- Dashboard -----------------------
-function showTrainerDashboard(res, session, visitorId) {
+function showTrainerDashboard(res, session, sessionId) {
   const greeting = `👋 Welcome ${
     session.username || "Trainer"
   }! How can I assist you today?`;
 
   const payload = {
+    platform: "ZOHOSALESIQ",
     action: "reply",
     replies: [greeting],
     suggestions: [
@@ -203,15 +197,15 @@ function showTrainerDashboard(res, session, visitorId) {
   };
 
   session.trainerStep = "dashboard";
-  sessionStore.set(visitorId, session);
+  session.problemReportStep = null; // Clear any problem report state
+  sessionStore.set(sessionId, session);
 
   return res.json(payload);
 }
 
-// ----------------------- View Members -----------------------
-async function handleViewMembers(message, res, session, visitorId) {
+async function handleViewMembers(message, res, session, sessionId) {
   try {
-    const { trainer, error } = await getTrainerFromSession(session, visitorId);
+    const { trainer, error } = await getTrainerFromSession(session, sessionId);
 
     if (error || !trainer) {
       return res.json({
@@ -262,7 +256,7 @@ async function handleViewMembers(message, res, session, visitorId) {
     });
 
     session.trainerStep = "dashboard";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     return res.json({
       action: "reply",
@@ -288,16 +282,15 @@ async function handleViewMembers(message, res, session, visitorId) {
   }
 }
 
-// ----------------------- Update Profile -----------------------
-async function handleUpdateProfile(message, res, session, visitorId) {
+async function handleUpdateProfile(message, res, session, sessionId) {
   try {
     if (message === "⬅️ Back to Dashboard") {
       session.trainerStep = "dashboard";
-      sessionStore.set(visitorId, session);
-      return showTrainerDashboard(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return showTrainerDashboard(res, session, sessionId);
     }
 
-    const { trainer, error } = await getTrainerFromSession(session, visitorId);
+    const { trainer, error } = await getTrainerFromSession(session, sessionId);
 
     if (error || !trainer) {
       return res.json({
@@ -317,7 +310,7 @@ async function handleUpdateProfile(message, res, session, visitorId) {
       profileInfo += `Which field would you like to update?`;
 
       session.trainerStep = "profile_field_select";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -334,7 +327,7 @@ async function handleUpdateProfile(message, res, session, visitorId) {
       if (message === "💼 Experience") {
         session.updateField = "experience";
         session.trainerStep = "profile_field_update";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         return res.json({
           action: "reply",
@@ -343,7 +336,7 @@ async function handleUpdateProfile(message, res, session, visitorId) {
       } else if (message === "🎯 Specialization") {
         session.updateField = "specialization";
         session.trainerStep = "profile_field_update";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         return res.json({
           action: "reply",
@@ -395,7 +388,7 @@ async function handleUpdateProfile(message, res, session, visitorId) {
 
       session.newValue = newValue;
       session.trainerStep = "profile_update_confirm";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       const fieldDisplayName = field.charAt(0).toUpperCase() + field.slice(1);
       const displayValue =
@@ -411,7 +404,7 @@ async function handleUpdateProfile(message, res, session, visitorId) {
     }
 
     if (session.trainerStep === "profile_update_confirm") {
-      if (message === "✅ Yes") {
+      if (message.includes("Yes") || message === "✅ Yes") {
         const field = session.updateField;
         const newValue = session.newValue;
 
@@ -421,7 +414,7 @@ async function handleUpdateProfile(message, res, session, visitorId) {
         await Trainer.findByIdAndUpdate(trainer._id, updateObj);
 
         session.trainerStep = "dashboard";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         const fieldDisplayName = field.charAt(0).toUpperCase() + field.slice(1);
         const displayValue =
@@ -440,10 +433,10 @@ async function handleUpdateProfile(message, res, session, visitorId) {
             "🤖 Talk to AI Assistant",
           ],
         });
-      } else if (message === "❌ No") {
+      } else if (message.includes("No") || message === "❌ No") {
         session.trainerStep = "update_profile";
-        sessionStore.set(visitorId, session);
-        return handleUpdateProfile("", res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleUpdateProfile("", res, session, sessionId);
       } else {
         return res.json({
           action: "reply",
@@ -465,16 +458,15 @@ async function handleUpdateProfile(message, res, session, visitorId) {
   }
 }
 
-// ----------------------- Add Class Schedule -----------------------
-async function handleAddClassSchedule(message, res, session, visitorId) {
+async function handleAddClassSchedule(message, res, session, sessionId) {
   try {
     if (message === "⬅️ Back to Dashboard") {
       session.trainerStep = "dashboard";
-      sessionStore.set(visitorId, session);
-      return showTrainerDashboard(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return showTrainerDashboard(res, session, sessionId);
     }
 
-    const { trainer, error } = await getTrainerFromSession(session, visitorId);
+    const { trainer, error } = await getTrainerFromSession(session, sessionId);
 
     if (error || !trainer) {
       return res.json({
@@ -488,7 +480,7 @@ async function handleAddClassSchedule(message, res, session, visitorId) {
 
     if (!session.classScheduleData) {
       session.classScheduleData = {};
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
     }
 
     if (session.trainerStep === "add_class_title") {
@@ -520,7 +512,7 @@ async function handleAddClassSchedule(message, res, session, visitorId) {
 
       session.classScheduleData.title = message;
       session.trainerStep = "add_class_day";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -585,9 +577,8 @@ async function handleAddClassSchedule(message, res, session, visitorId) {
 
       session.classScheduleData.day = dayValue;
       session.trainerStep = "add_class_time";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
-      // Calculate the next date for the selected day
       const nextDate = getNextDateForDay(dayValue);
 
       return res.json({
@@ -630,12 +621,10 @@ async function handleAddClassSchedule(message, res, session, visitorId) {
     }
 
     if (session.trainerStep === "add_class_time") {
-      // Extract time from Zoho response
       let timeValue = extractTimeFromZohoResponse(message);
 
       const validSlots = ["09:00", "10:00", "11:00", "13:00", "15:00", "17:00"];
       if (!timeValue || !validSlots.includes(timeValue)) {
-        // Recalculate the next date for the selected day
         const nextDate = getNextDateForDay(session.classScheduleData.day);
 
         return res.json({
@@ -654,7 +643,7 @@ async function handleAddClassSchedule(message, res, session, visitorId) {
 
       session.classScheduleData.time = timeValue;
       session.trainerStep = "add_class_notes";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -668,7 +657,7 @@ async function handleAddClassSchedule(message, res, session, visitorId) {
       session.classScheduleData.notes =
         message && message.toLowerCase() !== "skip" ? message : "";
       session.trainerStep = "add_class_confirm";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       const confirmation =
         `Please confirm your class schedule:\n\n` +
@@ -690,7 +679,7 @@ async function handleAddClassSchedule(message, res, session, visitorId) {
     }
 
     if (session.trainerStep === "add_class_confirm") {
-      if (message === "✅ Yes, Add Class") {
+      if (message.includes("Yes") || message.includes("Add Class")) {
         try {
           const newClassSchedule = new ClassSchedule({
             trainerId: trainer.userId,
@@ -700,7 +689,7 @@ async function handleAddClassSchedule(message, res, session, visitorId) {
             note: session.classScheduleData.notes,
           });
 
-          const savedClassSchedule = await newClassSchedule.save();
+          await newClassSchedule.save();
 
           let confirmation = `✅ Class schedule "${session.classScheduleData.title}" has been added successfully!\n\n`;
           confirmation += `Day: ${session.classScheduleData.day}\n`;
@@ -711,7 +700,7 @@ async function handleAddClassSchedule(message, res, session, visitorId) {
 
           session.trainerStep = "dashboard";
           session.classScheduleData = null;
-          sessionStore.set(visitorId, session);
+          sessionStore.set(sessionId, session);
 
           return res.json({
             action: "reply",
@@ -752,10 +741,10 @@ async function handleAddClassSchedule(message, res, session, visitorId) {
             suggestions: ["⬅️ Back to Dashboard"],
           });
         }
-      } else if (message === "🔄 No, Start Over") {
+      } else if (message.includes("No") || message.includes("Start Over")) {
         session.trainerStep = "add_class_title";
         session.classScheduleData = null;
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         return res.json({
           action: "reply",
@@ -781,8 +770,8 @@ async function handleAddClassSchedule(message, res, session, visitorId) {
     }
 
     session.trainerStep = "dashboard";
-    sessionStore.set(visitorId, session);
-    return showTrainerDashboard(res, session, visitorId);
+    sessionStore.set(sessionId, session);
+    return showTrainerDashboard(res, session, sessionId);
   } catch (error) {
     console.error("❌ [TRAINER] Error in add class schedule:", error);
 
@@ -796,18 +785,18 @@ async function handleAddClassSchedule(message, res, session, visitorId) {
   }
 }
 
-// ----------------------- AI Assistant -----------------------
-function handleAIAssistant(message, res, session, visitorId) {
+function handleAIAssistant(message, res, session, sessionId) {
   return aiAssistantController.handleAIAssistant(
     message,
     res,
     session,
-    visitorId
+    sessionId
   );
 }
 
 module.exports = {
   handleTrainer: exports.handleTrainer,
+  showTrainerDashboard,
   handleViewMembers,
   handleUpdateProfile,
   handleAddClassSchedule,

@@ -11,50 +11,61 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-exports.handleProblemReport = (message, res, session, visitorId) => {
+exports.handleProblemReport = (message, res, session, sessionId) => {
+  console.log("🔍 [PROBLEM_REPORT] Current step:", session.problemReportStep);
+  console.log("🔍 [PROBLEM_REPORT] Message received:", message);
+
   // Initialize problem report session if not already done
   if (!session.problemReportStep) {
     session.problemReportStep = "name";
-    sessionStore.set(visitorId, session);
-    return askForName(res, session, visitorId);
+    sessionStore.set(sessionId, session);
+    return askForName(res, session, sessionId);
   }
 
   const msg = (message || "").toString().trim();
 
   // Handle "Back to Dashboard" at any point
   if (msg.includes("Back to Dashboard") || msg.includes("⬅️")) {
+    console.log("🔙 [PROBLEM_REPORT] Going back to dashboard");
+
+    // Clear problem report data
     session.problemReportStep = null;
+    session.problemReportName = null;
+    session.problemReportEmail = null;
+    session.problemReportDescription = null;
 
     // Check user role and redirect to appropriate dashboard
     if (session.role === "trainer") {
       session.trainerStep = "dashboard";
+      sessionStore.set(sessionId, session);
       const trainerController = require("./zobottrainerController");
-      return trainerController.showTrainerDashboard(res, session, visitorId);
+      return trainerController.showTrainerDashboard(res, session, sessionId);
     } else {
       session.memberStep = "dashboard";
+      sessionStore.set(sessionId, session);
       const memberController = require("./zobotmemberController");
-      return memberController.showMemberDashboard(res, session, visitorId);
+      return memberController.showMemberDashboard(res, session, sessionId);
     }
   }
 
   // Handle different steps of problem reporting
   switch (session.problemReportStep) {
     case "name":
-      return handleNameInput(msg, res, session, visitorId);
+      return handleNameInput(msg, res, session, sessionId);
     case "email":
-      return handleEmailInput(msg, res, session, visitorId);
+      return handleEmailInput(msg, res, session, sessionId);
     case "description":
-      return handleDescriptionInput(msg, res, session, visitorId);
+      return handleDescriptionInput(msg, res, session, sessionId);
     case "confirm":
-      return handleConfirmation(msg, res, session, visitorId);
+      return handleConfirmation(msg, res, session, sessionId);
     default:
       session.problemReportStep = "name";
-      sessionStore.set(visitorId, session);
-      return askForName(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return askForName(res, session, sessionId);
   }
 };
 
-function askForName(res, session, visitorId) {
+function askForName(res, session, sessionId) {
   return res.json({
     platform: "ZOHOSALESIQ",
     action: "reply",
@@ -69,7 +80,9 @@ function askForName(res, session, visitorId) {
   });
 }
 
-function handleNameInput(message, res, session, visitorId) {
+function handleNameInput(message, res, session, sessionId) {
+  console.log("📝 [NAME_INPUT] Received:", message);
+
   // Validate name (non-empty)
   if (!message || message.trim().length < 2) {
     return res.json({
@@ -89,7 +102,9 @@ function handleNameInput(message, res, session, visitorId) {
   // Store name in session
   session.problemReportName = message.trim();
   session.problemReportStep = "email";
-  sessionStore.set(visitorId, session);
+  sessionStore.set(sessionId, session);
+
+  console.log("✅ [NAME_INPUT] Stored name:", session.problemReportName);
 
   return res.json({
     platform: "ZOHOSALESIQ",
@@ -105,7 +120,9 @@ function handleNameInput(message, res, session, visitorId) {
   });
 }
 
-function handleEmailInput(message, res, session, visitorId) {
+function handleEmailInput(message, res, session, sessionId) {
+  console.log("📧 [EMAIL_INPUT] Received:", message);
+
   // Validate email
   const emailRegex = /\S+@\S+\.\S+/;
   if (!emailRegex.test(message)) {
@@ -126,7 +143,9 @@ function handleEmailInput(message, res, session, visitorId) {
   // Store email in session
   session.problemReportEmail = message.trim();
   session.problemReportStep = "description";
-  sessionStore.set(visitorId, session);
+  sessionStore.set(sessionId, session);
+
+  console.log("✅ [EMAIL_INPUT] Stored email:", session.problemReportEmail);
 
   return res.json({
     platform: "ZOHOSALESIQ",
@@ -136,7 +155,9 @@ function handleEmailInput(message, res, session, visitorId) {
   });
 }
 
-function handleDescriptionInput(message, res, session, visitorId) {
+function handleDescriptionInput(message, res, session, sessionId) {
+  console.log("📄 [DESCRIPTION_INPUT] Received:", message);
+
   // Validate description (non-empty)
   if (!message || message.trim().length < 10) {
     return res.json({
@@ -152,7 +173,9 @@ function handleDescriptionInput(message, res, session, visitorId) {
   // Store description in session
   session.problemReportDescription = message.trim();
   session.problemReportStep = "confirm";
-  sessionStore.set(visitorId, session);
+  sessionStore.set(sessionId, session);
+
+  console.log("✅ [DESCRIPTION_INPUT] Stored description");
 
   // Show confirmation message
   const confirmation =
@@ -174,20 +197,22 @@ function handleDescriptionInput(message, res, session, visitorId) {
   });
 }
 
-async function handleConfirmation(message, res, session, visitorId) {
+async function handleConfirmation(message, res, session, sessionId) {
   console.log("🔍 [CONFIRMATION] Received message:", message);
   console.log("🔍 [CONFIRMATION] Message type:", typeof message);
-  console.log(
-    "🔍 [CONFIRMATION] Message includes 'Yes':",
-    message.includes("Yes")
-  );
-  console.log(
-    "🔍 [CONFIRMATION] Message includes 'Submit':",
-    message.includes("Submit")
-  );
 
-  // ✅ FIXED: Use .includes() to check for keywords instead of exact match
-  if (message.includes("Yes") && message.includes("Submit")) {
+  const msg = message.toString().trim();
+  console.log("🔍 [CONFIRMATION] Trimmed message:", msg);
+
+  // ✅ FIXED: More robust button detection
+  const isYesSubmit =
+    msg.includes("Yes") || msg.includes("Submit") || msg === "✅ Yes, Submit";
+  const isNoStartOver =
+    msg.includes("No") ||
+    msg.includes("Start Over") ||
+    msg === "🔄 No, Start Over";
+
+  if (isYesSubmit && !isNoStartOver) {
     try {
       console.log("✅ [CONFIRMATION] Submitting problem report...");
 
@@ -211,7 +236,7 @@ async function handleConfirmation(message, res, session, visitorId) {
 
       if (session.role === "trainer") {
         session.trainerStep = "dashboard";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         return res.json({
           platform: "ZOHOSALESIQ",
@@ -227,7 +252,7 @@ async function handleConfirmation(message, res, session, visitorId) {
         });
       } else {
         session.memberStep = "dashboard";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         return res.json({
           platform: "ZOHOSALESIQ",
@@ -256,7 +281,7 @@ async function handleConfirmation(message, res, session, visitorId) {
         suggestions: ["⬅️ Back to Dashboard"],
       });
     }
-  } else if (message.includes("No") && message.includes("Start Over")) {
+  } else if (isNoStartOver) {
     console.log("🔄 [CONFIRMATION] Starting over...");
 
     // Reset problem report session
@@ -264,11 +289,11 @@ async function handleConfirmation(message, res, session, visitorId) {
     session.problemReportName = null;
     session.problemReportEmail = null;
     session.problemReportDescription = null;
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
-    return askForName(res, session, visitorId);
+    return askForName(res, session, sessionId);
   } else {
-    console.log("❌ [CONFIRMATION] Invalid option selected");
+    console.log("❌ [CONFIRMATION] Invalid option selected:", msg);
 
     return res.json({
       platform: "ZOHOSALESIQ",
@@ -332,3 +357,14 @@ async function sendConfirmationEmail(session) {
   await transporter.sendMail(mailOptions);
   console.log("📧 Confirmation email sent successfully");
 }
+
+// Export the showTrainerDashboard function helper
+exports.showTrainerDashboard = (res, session, sessionId) => {
+  const trainerController = require("./zobottrainerController");
+  return trainerController.showTrainerDashboard(res, session, sessionId);
+};
+
+exports.showMemberDashboard = (res, session, sessionId) => {
+  const memberController = require("./zobotmemberController");
+  return memberController.showMemberDashboard(res, session, sessionId);
+};
