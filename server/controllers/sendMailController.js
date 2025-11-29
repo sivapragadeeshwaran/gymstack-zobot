@@ -1,53 +1,66 @@
 const User = require("../Models/user-model");
 const nodemailer = require("nodemailer");
 
-// ✅ Log environment variables status (without exposing values)
-console.log("📧 [EMAIL CONFIG] Checking email configuration...");
-console.log("   EMAIL_USER exists:", !!process.env.EMAIL_USER);
+// ✅ Log environment variables status
+console.log("📧 [EMAIL CONFIG] Checking SendGrid configuration...");
+console.log("   EMAIL_USER:", process.env.EMAIL_USER);
 console.log("   EMAIL_PASS exists:", !!process.env.EMAIL_PASS);
+console.log(
+  "   EMAIL_PASS starts with SG.:",
+  process.env.EMAIL_PASS?.startsWith("SG.")
+);
 console.log("   EMAIL_FROM:", process.env.EMAIL_FROM || "noreply@gym.com");
 
-// Create a transporter object using SMTP transport
+// ✅ SENDGRID PRODUCTION-OPTIMIZED TRANSPORTER
 const transporter = nodemailer.createTransport({
-  service: "gmail",
-  host: "smtp.gmail.com",
+  host: "smtp.sendgrid.net",
   port: 587,
-  secure: false,
+  secure: false, // Use TLS
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: "apikey", // This must be exactly "apikey"
+    pass: process.env.EMAIL_PASS, // Your SendGrid API key
   },
-  pool: true,
-  maxConnections: 5,
-  maxMessages: 100,
-  rateDelta: 1000,
-  rateLimit: 5,
-  // ✅ ADD: Better error handling
+  // ✅ OPTIMIZED FOR SPEED
+  pool: true, // Connection pooling
+  maxConnections: 5, // Max 5 concurrent
+  maxMessages: 100, // 100 messages per connection
+  rateDelta: 1000, // 1 second window
+  rateLimit: 5, // 5 emails per second
+  connectionTimeout: 5000, // 5 second timeout
+  greetingTimeout: 5000,
+  socketTimeout: 5000,
+  // ✅ TLS settings
   tls: {
-    rejectUnauthorized: false,
+    rejectUnauthorized: true, // SendGrid has valid certs
   },
-  debug: false, // Set to true for detailed SMTP logs
-  logger: false, // Set to true for even more logs
+  debug: false,
+  logger: false,
 });
 
-// ✅ ADD: Verify transporter configuration on startup
+// ✅ Verify transporter on startup
 transporter.verify(function (error, success) {
   if (error) {
-    console.error("❌ [EMAIL] Transporter verification failed!");
+    console.error("❌ [EMAIL] SendGrid verification failed!");
     console.error("   Error:", error.message);
+    console.error("   Error code:", error.code);
+    console.error("");
     console.error("   📝 Troubleshooting:");
-    console.error("      1. Check EMAIL_USER is correct Gmail address");
+    console.error("      1. Check EMAIL_USER is exactly 'apikey'");
     console.error(
-      "      2. Check EMAIL_PASS is 16-char App Password (no spaces)"
+      "      2. Check EMAIL_PASS is your full SendGrid API key (starts with SG.)"
     );
-    console.error("      3. Verify 2FA is enabled on Gmail account");
-    console.error("      4. Generate new App Password if needed");
+    console.error("      3. Verify your sender email at sendgrid.com");
+    console.error("      4. Make sure API key has 'Mail Send' permission");
+    console.error("");
   } else {
-    console.log("✅ [EMAIL] Email transporter is ready to send messages");
-    console.log("   📧 Configured for:", process.env.EMAIL_USER);
-    console.log("   🎯 Ready to send OTP and confirmation emails");
+    console.log("✅ [EMAIL] SendGrid transporter ready!");
+    console.log("   📧 Configured for:", process.env.EMAIL_FROM);
+    console.log("   🚀 Using SendGrid for FAST delivery (1-3 seconds)");
+    console.log("   💯 Free tier: 100 emails/day");
   }
 });
+
+// ✅ EXISTING FUNCTIONS (keep as-is)
 
 // Function to send email to a member
 async function sendExpiryEmail(member, daysUntilExpiry) {
@@ -55,8 +68,6 @@ async function sendExpiryEmail(member, daysUntilExpiry) {
     const expiryDate = new Date(
       member.membershipExpiryDate
     ).toLocaleDateString();
-
-    // Determine email subject and content based on expiry status
     let subject, message;
 
     if (daysUntilExpiry < 0) {
@@ -121,9 +132,7 @@ async function sendExpiryEmail(member, daysUntilExpiry) {
       html: message.replace(/\n/g, "<br>"),
     };
 
-    // Send the email
     const info = await transporter.sendMail(mailOptions);
-
     return { success: true, email: member.email, messageId: info.messageId };
   } catch (error) {
     console.error(`Error sending email to ${member.email}:`, error);
@@ -134,24 +143,20 @@ async function sendExpiryEmail(member, daysUntilExpiry) {
 // Main function to get expired members and send emails
 async function sendExpiryEmails() {
   try {
-    // Get current date
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to beginning of day
+    today.setHours(0, 0, 0, 0);
 
-    // Calculate dates for 1 day and 2 days from now
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const dayAfterTomorrow = new Date(today);
     dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
 
-    // Find users with expired memberships
     const expiredMembers = await User.find({
       role: "user",
       membershipExpiryDate: { $lt: today },
     }).populate("membershipPlan");
 
-    // Find users with memberships expiring in 1 day
     const expiringIn1Day = await User.find({
       role: "user",
       membershipExpiryDate: {
@@ -160,7 +165,6 @@ async function sendExpiryEmails() {
       },
     }).populate("membershipPlan");
 
-    // Find users with memberships expiring in 2 days
     const expiringIn2Days = await User.find({
       role: "user",
       membershipExpiryDate: {
@@ -176,12 +180,10 @@ async function sendExpiryEmails() {
       ...expiringIn2Days,
     ];
 
-    // Process emails in batches to avoid overwhelming the email server
-    const batchSize = 10; // Adjust based on your email server limits
+    const batchSize = 10;
     for (let i = 0; i < allMembers.length; i += batchSize) {
       const batch = allMembers.slice(i, i + batchSize);
 
-      // Process each batch in parallel
       const batchPromises = batch.map((member) => {
         let daysUntilExpiry;
         if (expiredMembers.includes(member)) {
@@ -194,17 +196,14 @@ async function sendExpiryEmails() {
         return sendExpiryEmail(member, daysUntilExpiry);
       });
 
-      // Wait for the current batch to complete before moving to the next
       const batchResults = await Promise.all(batchPromises);
       results.push(...batchResults);
 
-      // Add a small delay between batches to be respectful to the email server
       if (i + batchSize < allMembers.length) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
 
-    // Count successful and failed emails
     const successful = results.filter((r) => r.success).length;
     const failed = results.filter((r) => !r.success).length;
 
@@ -251,10 +250,9 @@ async function sendTestEmail(toEmail) {
   }
 }
 
-// Function to send welcome email with credentials to new users
+// Function to send welcome email
 async function sendWelcomeEmail(userData, password, role) {
   try {
-    // Determine role-specific content
     let roleSpecificContent = "";
 
     if (role === "user") {
@@ -316,9 +314,7 @@ async function sendWelcomeEmail(userData, password, role) {
       html: message.replace(/\n/g, "<br>"),
     };
 
-    // Send the email
     const info = await transporter.sendMail(mailOptions);
-
     return { success: true, email: userData.email, messageId: info.messageId };
   } catch (error) {
     console.error(`Error sending welcome email to ${userData.email}:`, error);
