@@ -1,19 +1,18 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const verifyToken = require('../middleware/verifyToken');
-const isAdmin = require('../middleware/isAdmin.js');
-const addMember = require('../controllers/addMember.js');
-const getAllMembers = require('../controllers/getMember.js');
-const updateMember = require('../controllers/updateMember.js');
-const deleteMember = require('../controllers/deleteMember.js');
+const verifyToken = require("../middleware/verifyToken");
+const isAdmin = require("../middleware/isAdmin.js");
+const addMember = require("../controllers/addMember.js");
+const getAllMembers = require("../controllers/getMember.js");
+const updateMember = require("../controllers/updateMember.js");
+const deleteMember = require("../controllers/deleteMember.js");
 const User = require("../Models/user-model.js");
 const mongoose = require("mongoose");
 
-
-router.post('/addMembers', verifyToken, isAdmin,addMember);
+router.post("/addMembers", verifyToken, isAdmin, addMember);
 router.get("/members", verifyToken, isAdmin, getAllMembers);
-router.put('/members/:id', verifyToken, isAdmin, updateMember);
-router.delete('/members/:id', verifyToken, isAdmin, deleteMember);
+router.put("/members/:id", verifyToken, isAdmin, updateMember);
+router.delete("/members/:id", verifyToken, isAdmin, deleteMember);
 // Get member by ID
 //const mongoose = require("mongoose");
 
@@ -52,7 +51,5 @@ router.get("/getmemberbyId/:id", verifyToken, isAdmin, async (req, res) => {
     });
   }
 });
-
-
 
 module.exports = router;

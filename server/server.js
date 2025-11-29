@@ -124,6 +124,31 @@ app.get("/health", (req, res) => {
   });
 });
 
+// ⭐ Debug endpoint to view active sessions (OPTIONAL)
+app.get("/webhook/debug-sessions", (req, res) => {
+  const sessionStore = require("./utils/sessionStore");
+  res.json({
+    timestamp: new Date().toISOString(),
+    sessionCount: sessionStore.getSessionCount(),
+    sessions: sessionStore.listSessions(),
+  });
+});
+
+// ⭐ Manual session clear endpoint (for debugging)
+app.post("/webhook/clear-session/:conversationId", (req, res) => {
+  const sessionStore = require("./utils/sessionStore");
+  const { conversationId } = req.params;
+
+  const cleared = sessionStore.clear(conversationId);
+
+  res.json({
+    success: cleared,
+    message: cleared
+      ? `Session ${conversationId} cleared`
+      : `Session ${conversationId} not found`,
+  });
+});
+
 // ⭐ Backend API routes
 app.use("/api/users", UserRouter);
 app.use("/api/admin", AdminRouter);
