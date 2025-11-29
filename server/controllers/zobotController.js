@@ -57,11 +57,23 @@ exports.handleZobot = async (req, res) => {
     console.log("✨ NEW CONVERSATION STARTED:", sessionId);
   }
 
+  // Helper function to update session
+  const updateSession = (data) => {
+    session = { ...session, ...data };
+    sessionStore.set(sessionId, session);
+    console.log("📝 Session updated:", {
+      role: session.role,
+      stage: session.stage,
+      isAuthenticated: session.isAuthenticated,
+      email: session.authenticatedEmail,
+    });
+  };
+
   // ========================================
   // 🔧 FIX #3: Show welcome only for NEW conversations
   // ========================================
   if (!session.welcomeShown) {
-    sessionStore.set(sessionId, { ...session, welcomeShown: true });
+    updateSession({ welcomeShown: true });
 
     return res.json({
       action: "reply",
@@ -79,11 +91,6 @@ exports.handleZobot = async (req, res) => {
       ],
     });
   }
-
-  const updateSession = (data) => {
-    session = { ...session, ...data };
-    sessionStore.set(sessionId, session);
-  };
 
   // ========================================
   // 🔧 FIX #4: Handle "Edit Info" or reset request
@@ -106,7 +113,7 @@ exports.handleZobot = async (req, res) => {
       email: null,
       authenticatedEmail: null,
       username: null,
-      stage: null,
+      stage: "awaiting_email",
       isAuthenticated: false,
     });
 
@@ -119,20 +126,21 @@ exports.handleZobot = async (req, res) => {
   // ========================================
   // 🔧 FIX #5: Route ALREADY authenticated users to controllers
   // ========================================
-  if (session.role && session.authenticatedEmail && session.isAuthenticated) {
-    console.log(
-      `🎯 Routing authenticated user to ${session.role} controller for email: ${session.authenticatedEmail}`
-    );
+  if (session.isAuthenticated && session.role && session.authenticatedEmail) {
+    console.log(`🎯 Routing authenticated user to ${session.role} controller`);
+    console.log(`📧 Email: ${session.authenticatedEmail}`);
+    console.log(`💬 Message: ${msg}`);
 
     switch (session.role) {
       case "admin":
         return adminController.handleAdmin(msg, res, session, sessionId);
       case "trainer":
         return trainerController.handleTrainer(msg, res, session, sessionId);
-      case "member":
       case "user":
+      case "member":
         return memberController.handleMember(msg, res, session, sessionId);
       default:
+        console.log("❌ Unknown role:", session.role);
         updateSession({
           role: null,
           userId: null,
@@ -158,14 +166,19 @@ exports.handleZobot = async (req, res) => {
     // User just provided email in THIS message
     userEmail = emailMatch[0].toLowerCase();
     console.log("📧 Email extracted from message:", userEmail);
-  } else if (session.authenticatedEmail) {
-    // Use previously authenticated email from THIS conversation
-    userEmail = session.authenticatedEmail;
-    console.log("📧 Using authenticated email from session:", userEmail);
-  } else {
-    // No email available - route to new visitor controller
-    console.log("❓ No email found - routing to new visitor controller");
+  } else if (!session.isAuthenticated) {
+    // No email and not authenticated - route to new visitor controller
+    console.log(
+      "❓ No email found and not authenticated - routing to new visitor controller"
+    );
     return newVisitorController.handleNewVisitor(msg, res, session, sessionId);
+  } else {
+    // Authenticated but no email in message - should not happen
+    console.log("⚠️ Authenticated but no email - this should not happen");
+    return res.json({
+      action: "reply",
+      replies: ["Something went wrong. Please type 'reset' to start over."],
+    });
   }
 
   // ========================================
@@ -193,58 +206,91 @@ exports.handleZobot = async (req, res) => {
     });
 
     // ========================================
-    // 🔧 FIX #8: Store email ONLY after successful authentication
+    // 🔧 FIX #8: Store COMPLETE user info after successful authentication
     // ========================================
     updateSession({
-      stage: "authenticated",
+      stage: "dashboard",
       role: user.role,
-      userId: user._id,
-      authenticatedEmail: user.email, // Store the VERIFIED email
+      userId: user._id.toString(),
+      authenticatedEmail: user.email,
       username: user.username,
-      isAuthenticated: true, // Mark as authenticated
+      isAuthenticated: true,
+      phone: user.phone,
+      membershipPlan: user.membershipPlan,
+      trainerAssigned: user.trainerAssigned,
+      feeStatus: user.feeStatus,
     });
 
     console.log(`✅ Authentication successful - Role: ${user.role}`);
 
     // ========================================
-    // 🔧 FIX #9: Send role-specific welcome message with menu
+    // 🔧 FIX #9: Send role-specific dashboard IMMEDIATELY
     // ========================================
-    const welcomeMessages = {
-      admin: {
-        text: `👋 Welcome Admin ${user.username}!\n\nYou have access to:\n• Add New Member\n• Add New Trainer\n• Add New Admin\n• View Members\n• View Trainers\n• View Admins\n• Manage Plans\n\nWhat would you like to do?`,
-        buttons: [
-          { text: "Add Member", value: "add member" },
-          { text: "Add Trainer", value: "add trainer" },
-          { text: "View Members", value: "view members" },
-          { text: "Manage Plans", value: "manage plans" },
-        ],
-      },
-      trainer: {
-        text: `💪 Hello Trainer ${user.username}!\n\nYou can:\n• View Your Schedule\n• View Assigned Members\n• Update Workout Plans\n• Mark Attendance\n\nWhat would you like to manage?`,
-        buttons: [
-          { text: "My Schedule", value: "my schedule" },
-          { text: "My Members", value: "my members" },
-          { text: "Update Plans", value: "update plans" },
-        ],
-      },
-      member: {
-        text: `🏋️ Hi ${user.username}!\n\nWelcome to your fitness journey!\n• View Your Workout Plan\n• Check Your Progress\n• View Schedule\n• Contact Trainer\n\nHow can I help you today?`,
-        buttons: [
-          { text: "My Workout", value: "my workout" },
-          { text: "My Progress", value: "my progress" },
-          { text: "Schedule", value: "my schedule" },
-        ],
-      },
-    };
 
-    const welcomeConfig = welcomeMessages[user.role] || welcomeMessages.member;
-
-    // Return welcome message (NOT routing to controller yet)
-    return res.json({
-      action: "reply",
-      replies: [welcomeConfig.text],
-      suggestions: welcomeConfig.buttons,
-    });
+    // Create role-specific dashboard messages
+    if (user.role === "admin") {
+      return res.json({
+        action: "reply",
+        replies: [
+          `👋 Welcome Admin ${user.username}!\n\nAdmin Dashboard:`,
+          {
+            text: "What would you like to do?",
+            input: {
+              type: "select",
+              options: [
+                { title: "➕ Add New Member", value: "add member" },
+                { title: "➕ Add New Trainer", value: "add trainer" },
+                { title: "➕ Add New Admin", value: "add admin" },
+                { title: "👥 View Members", value: "view members" },
+                { title: "💪 View Trainers", value: "view trainers" },
+                { title: "👨‍💼 View Admins", value: "view admins" },
+                { title: "📋 Manage Plans", value: "manage plans" },
+              ],
+            },
+          },
+        ],
+      });
+    } else if (user.role === "trainer") {
+      return res.json({
+        action: "reply",
+        replies: [
+          `💪 Hello Trainer ${user.username}!\n\nTrainer Dashboard:`,
+          {
+            text: "What would you like to manage?",
+            input: {
+              type: "select",
+              options: [
+                { title: "📅 My Schedule", value: "my schedule" },
+                { title: "👥 My Members", value: "my members" },
+                { title: "📝 Update Plans", value: "update plans" },
+                { title: "✅ Mark Attendance", value: "mark attendance" },
+              ],
+            },
+          },
+        ],
+      });
+    } else {
+      // user or member role
+      return res.json({
+        action: "reply",
+        replies: [
+          `🏋️ Hi ${user.username}!\n\nMember Dashboard:`,
+          {
+            text: "How can I help you today?",
+            input: {
+              type: "select",
+              options: [
+                { title: "💪 My Workout Plan", value: "my workout" },
+                { title: "📈 My Progress", value: "my progress" },
+                { title: "📅 My Schedule", value: "my schedule" },
+                { title: "👨‍🏫 Contact Trainer", value: "contact trainer" },
+                { title: "💳 Membership Status", value: "membership status" },
+              ],
+            },
+          },
+        ],
+      });
+    }
 
     // NOTE: Next message from user will be routed to appropriate controller
     // because session.isAuthenticated is now true

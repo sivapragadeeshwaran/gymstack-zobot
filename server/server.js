@@ -26,6 +26,9 @@ const trainerPanelRoutes = require("./routes/trainerPanel-routes");
 const { setupMembershipReminderJob } = require("./cron/membershipReminder");
 const contactRoutes = require("./routes/contact-route");
 const messageRoutes = require("./routes/message-routes");
+const {
+  googleCalendarController,
+} = require("./controllers/googleCalendarController");
 
 const path = require("path");
 const zobotRoutes = require("./routes/zobotRoutes");
