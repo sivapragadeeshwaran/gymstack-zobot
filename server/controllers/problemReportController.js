@@ -1,6 +1,6 @@
 const sessionStore = require("../utils/sessionStore");
 const nodemailer = require("nodemailer");
-require("dotenv").config(); // Add this line to load environment variables
+require("dotenv").config();
 
 // Configure nodemailer transporter
 const transporter = nodemailer.createTransport({
@@ -22,17 +22,17 @@ exports.handleProblemReport = (message, res, session, visitorId) => {
   const msg = (message || "").toString().trim();
 
   // Handle "Back to Dashboard" at any point
-  if (msg === "⬅️ Back to Dashboard") {
+  if (msg.includes("Back to Dashboard") || msg.includes("⬅️")) {
     session.problemReportStep = null;
 
     // Check user role and redirect to appropriate dashboard
     if (session.role === "trainer") {
       session.trainerStep = "dashboard";
-      const trainerController = require("./zobotTrainerController");
+      const trainerController = require("./zobottrainerController");
       return trainerController.showTrainerDashboard(res, session, visitorId);
     } else {
       session.memberStep = "dashboard";
-      const memberController = require("./memberController");
+      const memberController = require("./zobotmemberController");
       return memberController.showMemberDashboard(res, session, visitorId);
     }
   }
@@ -175,20 +175,39 @@ function handleDescriptionInput(message, res, session, visitorId) {
 }
 
 async function handleConfirmation(message, res, session, visitorId) {
-  if (message === "✅ Yes, Submit") {
+  console.log("🔍 [CONFIRMATION] Received message:", message);
+  console.log("🔍 [CONFIRMATION] Message type:", typeof message);
+  console.log(
+    "🔍 [CONFIRMATION] Message includes 'Yes':",
+    message.includes("Yes")
+  );
+  console.log(
+    "🔍 [CONFIRMATION] Message includes 'Submit':",
+    message.includes("Submit")
+  );
+
+  // ✅ FIXED: Use .includes() to check for keywords instead of exact match
+  if (message.includes("Yes") && message.includes("Submit")) {
     try {
+      console.log("✅ [CONFIRMATION] Submitting problem report...");
+
       // Send email to admin
       await sendEmailToAdmin(session);
 
       // Send confirmation email to user
       await sendConfirmationEmail(session);
 
-      // Reset session
+      console.log("✅ [CONFIRMATION] Emails sent successfully");
+
+      // Clear problem report data from session
       session.problemReportStep = null;
+      session.problemReportName = null;
+      session.problemReportEmail = null;
+      session.problemReportDescription = null;
 
       // Show success message with role-based suggestions
       const successMessage =
-        "We have collected your problem. We will analyze it and resolve it soon.";
+        "✅ We have collected your problem. We will analyze it and resolve it soon.";
 
       if (session.role === "trainer") {
         session.trainerStep = "dashboard";
@@ -200,9 +219,9 @@ async function handleConfirmation(message, res, session, visitorId) {
           replies: [successMessage],
           suggestions: [
             "👥 View Members",
-            "👤 Update Profile",
+            "📝 Update Profile",
             "📅 Add Class Schedule",
-            "⚠️ Report an Issue",
+            "🚨 Report an Issue",
             "🤖 Talk to AI Assistant",
           ],
         });
@@ -219,7 +238,7 @@ async function handleConfirmation(message, res, session, visitorId) {
             "💳 Renew Membership",
             "📅 Show Today's / Weekly Class",
             "👤 Update Profile",
-            "🧮 BMI Calculator",
+            "📊 BMI Calculator",
             "🤖 Talk to AI Assistant",
             "⚠️ Report a Problem",
           ],
@@ -237,7 +256,9 @@ async function handleConfirmation(message, res, session, visitorId) {
         suggestions: ["⬅️ Back to Dashboard"],
       });
     }
-  } else if (message === "🔄 No, Start Over") {
+  } else if (message.includes("No") && message.includes("Start Over")) {
+    console.log("🔄 [CONFIRMATION] Starting over...");
+
     // Reset problem report session
     session.problemReportStep = "name";
     session.problemReportName = null;
@@ -247,6 +268,8 @@ async function handleConfirmation(message, res, session, visitorId) {
 
     return askForName(res, session, visitorId);
   } else {
+    console.log("❌ [CONFIRMATION] Invalid option selected");
+
     return res.json({
       platform: "ZOHOSALESIQ",
       action: "reply",
@@ -262,35 +285,50 @@ async function handleConfirmation(message, res, session, visitorId) {
 
 async function sendEmailToAdmin(session) {
   const mailOptions = {
-    from: process.env.EMAIL_USER, // Remove quotes around process.env.EMAIL_USER
-    to: process.env.ADMIN_EMAIL, // Use a separate environment variable for admin email
+    from: process.env.EMAIL_USER,
+    to: process.env.ADMIN_EMAIL,
     subject:
-      "New Problem Report from Gym " +
+      "🚨 New Problem Report from Gym " +
       (session.role === "trainer" ? "Trainer" : "Member"),
-    text:
-      `A new problem report has been submitted by a ${
+    html: `
+      <h2>New Problem Report</h2>
+      <p>A new problem report has been submitted by a ${
         session.role === "trainer" ? "trainer" : "member"
-      }:\n\n` +
-      `Name: ${session.problemReportName}\n` +
-      `Email: ${session.problemReportEmail}\n` +
-      `Problem: ${session.problemReportDescription}`,
+      }:</p>
+      <hr>
+      <p><strong>Name:</strong> ${session.problemReportName}</p>
+      <p><strong>Email:</strong> ${session.problemReportEmail}</p>
+      <p><strong>Problem:</strong></p>
+      <p>${session.problemReportDescription}</p>
+      <hr>
+      <p><em>This is an automated message from Strength Zone Gym Bot</em></p>
+    `,
   };
 
   await transporter.sendMail(mailOptions);
+  console.log("📧 Admin email sent successfully");
 }
 
 async function sendConfirmationEmail(session) {
   const mailOptions = {
-    from: process.env.EMAIL_USER, // Remove quotes around process.env.EMAIL_USER
+    from: process.env.EMAIL_USER,
     to: session.problemReportEmail,
-    subject: "We have received your problem report",
-    text:
-      `Dear ${session.problemReportName},\n\n` +
-      `We have received your issue. We will review it and resolve it soon.\n\n` +
-      `Thank you for your patience.\n\n` +
-      `Best regards,\n` +
-      `The Gym Team`,
+    subject: "✅ We have received your problem report",
+    html: `
+      <h2>Thank you for reporting your issue</h2>
+      <p>Dear ${session.problemReportName},</p>
+      <p>We have received your problem report and our team will review it shortly.</p>
+      <hr>
+      <p><strong>Your Report:</strong></p>
+      <p>${session.problemReportDescription}</p>
+      <hr>
+      <p>We appreciate your patience and will get back to you as soon as possible.</p>
+      <br>
+      <p>Best regards,<br>
+      <strong>Strength Zone Gym Team</strong></p>
+    `,
   };
 
   await transporter.sendMail(mailOptions);
+  console.log("📧 Confirmation email sent successfully");
 }

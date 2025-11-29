@@ -67,11 +67,12 @@ exports.handleZobot = async (req, res) => {
     return updatedSession;
   };
 
-  // ✅ FIXED: Show welcome with email request immediately on first message
+  // ✅ FIXED: Show welcome with email input field immediately on first message
   if (!session.welcomeShown) {
     updateSession({ welcomeShown: true });
 
     return res.json({
+      platform: "ZOHOSALESIQ",
       action: "reply",
       replies: [
         {
@@ -88,6 +89,12 @@ exports.handleZobot = async (req, res) => {
           text: "Please provide your email address to continue:",
         },
       ],
+      input: {
+        type: "email",
+        placeholder: "Enter your email address",
+        value: "",
+        error: ["Enter a valid email address"],
+      },
     });
   }
 
@@ -115,8 +122,15 @@ exports.handleZobot = async (req, res) => {
     });
 
     return res.json({
+      platform: "ZOHOSALESIQ",
       action: "reply",
       replies: ["Please enter your email address:"],
+      input: {
+        type: "email",
+        placeholder: "Enter your email address",
+        value: "",
+        error: ["Enter a valid email address"],
+      },
     });
   }
 
@@ -154,8 +168,15 @@ exports.handleZobot = async (req, res) => {
     console.log("❓ No email found, asking for it");
 
     return res.json({
+      platform: "ZOHOSALESIQ",
       action: "reply",
       replies: ["Please provide a valid email address to continue:"],
+      input: {
+        type: "email",
+        placeholder: "Enter your email address",
+        value: "",
+        error: ["Enter a valid email address"],
+      },
     });
   }
 
@@ -250,10 +271,17 @@ exports.handleZobot = async (req, res) => {
   } catch (err) {
     console.error("❌ Database error:", err);
     return res.json({
+      platform: "ZOHOSALESIQ",
       action: "reply",
       replies: [
         "Sorry, there was an error. Please try again or type 'reset' to start over.",
       ],
+      input: {
+        type: "email",
+        placeholder: "Enter your email address",
+        value: "",
+        error: ["Enter a valid email address"],
+      },
     });
   }
 };
