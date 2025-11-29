@@ -3,7 +3,6 @@ const User = require("../Models/user-model");
 const Trainer = require("../Models/trainer-model");
 const ClassSchedule = require("../Models/classSchedule");
 const aiAssistantController = require("./aiAssistantController");
-const problemReportController = require("./problemReportController");
 
 // Helper function to extract time from Zoho timeslots response
 function extractTimeFromZohoResponse(message) {
@@ -102,7 +101,6 @@ exports.handleTrainer = (message, res, session, sessionId) => {
 
   if (msg.includes("Back to Dashboard") || msg.includes("⬅️")) {
     session.trainerStep = "dashboard";
-    session.problemReportStep = null;
     sessionStore.set(sessionId, session);
     return showTrainerDashboard(res, session, sessionId);
   }
@@ -121,16 +119,6 @@ exports.handleTrainer = (message, res, session, sessionId) => {
         session.trainerStep = "add_class_title";
         sessionStore.set(sessionId, session);
         return handleAddClassSchedule(msg, res, session, sessionId);
-      case "🚨 Report an Issue":
-        session.trainerStep = "problem_report";
-        session.problemReportStep = null; // Reset problem report flow
-        sessionStore.set(sessionId, session);
-        return problemReportController.handleProblemReport(
-          "",
-          res,
-          session,
-          sessionId
-        );
       case "🤖 Talk to AI Assistant":
         session.trainerStep = "ai_assistant";
         sessionStore.set(sessionId, session);
@@ -138,16 +126,6 @@ exports.handleTrainer = (message, res, session, sessionId) => {
       default:
         return showTrainerDashboard(res, session, sessionId);
     }
-  }
-
-  // If in problem report flow, handle it
-  if (session.trainerStep === "problem_report" || session.problemReportStep) {
-    return problemReportController.handleProblemReport(
-      msg,
-      res,
-      session,
-      sessionId
-    );
   }
 
   switch (session.trainerStep) {
@@ -191,13 +169,11 @@ function showTrainerDashboard(res, session, sessionId) {
       "👥 View Members",
       "📝 Update Profile",
       "📅 Add Class Schedule",
-      "🚨 Report an Issue",
       "🤖 Talk to AI Assistant",
     ],
   };
 
   session.trainerStep = "dashboard";
-  session.problemReportStep = null; // Clear any problem report state
   sessionStore.set(sessionId, session);
 
   return res.json(payload);
@@ -209,6 +185,7 @@ async function handleViewMembers(message, res, session, sessionId) {
 
     if (error || !trainer) {
       return res.json({
+        platform: "ZOHOSALESIQ",
         action: "reply",
         replies: [
           "Sorry, I couldn't find your trainer profile. Please contact admin.",
@@ -224,6 +201,7 @@ async function handleViewMembers(message, res, session, sessionId) {
 
     if (members.length === 0) {
       return res.json({
+        platform: "ZOHOSALESIQ",
         action: "reply",
         replies: ["You don't have any members assigned to you yet."],
         suggestions: ["⬅️ Back to Dashboard"],
@@ -259,13 +237,13 @@ async function handleViewMembers(message, res, session, sessionId) {
     sessionStore.set(sessionId, session);
 
     return res.json({
+      platform: "ZOHOSALESIQ",
       action: "reply",
       replies: [response],
       suggestions: [
         "👥 View Members",
         "📝 Update Profile",
         "📅 Add Class Schedule",
-        "🚨 Report an Issue",
         "🤖 Talk to AI Assistant",
       ],
     });
@@ -273,6 +251,7 @@ async function handleViewMembers(message, res, session, sessionId) {
     console.error("🔥 [TRAINER] Error fetching members:", error);
 
     return res.json({
+      platform: "ZOHOSALESIQ",
       action: "reply",
       replies: [
         "Sorry, there was an error retrieving your members. Please try again later.",
@@ -294,6 +273,7 @@ async function handleUpdateProfile(message, res, session, sessionId) {
 
     if (error || !trainer) {
       return res.json({
+        platform: "ZOHOSALESIQ",
         action: "reply",
         replies: [
           "Sorry, I couldn't find your trainer profile. Please contact admin.",
@@ -313,6 +293,7 @@ async function handleUpdateProfile(message, res, session, sessionId) {
       sessionStore.set(sessionId, session);
 
       return res.json({
+        platform: "ZOHOSALESIQ",
         action: "reply",
         replies: [profileInfo],
         suggestions: [
@@ -330,6 +311,7 @@ async function handleUpdateProfile(message, res, session, sessionId) {
         sessionStore.set(sessionId, session);
 
         return res.json({
+          platform: "ZOHOSALESIQ",
           action: "reply",
           replies: ["Please enter your years of experience (numbers only):"],
         });
@@ -339,6 +321,7 @@ async function handleUpdateProfile(message, res, session, sessionId) {
         sessionStore.set(sessionId, session);
 
         return res.json({
+          platform: "ZOHOSALESIQ",
           action: "reply",
           replies: [
             "Please enter your specialization (e.g., Yoga, Weightlifting, Cardio):",
@@ -346,6 +329,7 @@ async function handleUpdateProfile(message, res, session, sessionId) {
         });
       } else {
         return res.json({
+          platform: "ZOHOSALESIQ",
           action: "reply",
           replies: ["Please select a valid field to update:"],
           suggestions: [
@@ -381,6 +365,7 @@ async function handleUpdateProfile(message, res, session, sessionId) {
 
       if (!isValid) {
         return res.json({
+          platform: "ZOHOSALESIQ",
           action: "reply",
           replies: ["Invalid input. Please enter a valid value:"],
         });
@@ -395,6 +380,7 @@ async function handleUpdateProfile(message, res, session, sessionId) {
         field === "experience" ? `${newValue} years` : newValue;
 
       return res.json({
+        platform: "ZOHOSALESIQ",
         action: "reply",
         replies: [
           `You are about to update your ${fieldDisplayName} to: ${displayValue}\n\nDo you want to proceed?`,
@@ -421,6 +407,7 @@ async function handleUpdateProfile(message, res, session, sessionId) {
           field === "experience" ? `${newValue} years` : newValue;
 
         return res.json({
+          platform: "ZOHOSALESIQ",
           action: "reply",
           replies: [
             `✅ Your ${fieldDisplayName} has been updated to: ${displayValue}`,
@@ -429,7 +416,6 @@ async function handleUpdateProfile(message, res, session, sessionId) {
             "👥 View Members",
             "📝 Update Profile",
             "📅 Add Class Schedule",
-            "🚨 Report an Issue",
             "🤖 Talk to AI Assistant",
           ],
         });
@@ -439,6 +425,7 @@ async function handleUpdateProfile(message, res, session, sessionId) {
         return handleUpdateProfile("", res, session, sessionId);
       } else {
         return res.json({
+          platform: "ZOHOSALESIQ",
           action: "reply",
           replies: ["Please select a valid option: Yes or No"],
           suggestions: ["✅ Yes", "❌ No", "⬅️ Back to Dashboard"],
@@ -449,6 +436,7 @@ async function handleUpdateProfile(message, res, session, sessionId) {
     console.error("🔥 [TRAINER] Error in update profile:", error);
 
     return res.json({
+      platform: "ZOHOSALESIQ",
       action: "reply",
       replies: [
         "Sorry, there was an error updating your profile. Please try again later.",
@@ -470,6 +458,7 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
 
     if (error || !trainer) {
       return res.json({
+        platform: "ZOHOSALESIQ",
         action: "reply",
         replies: [
           "Sorry, I couldn't find your trainer profile. Please contact admin.",
@@ -486,6 +475,7 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
     if (session.trainerStep === "add_class_title") {
       if (!message || message === "📅 Add Class Schedule") {
         return res.json({
+          platform: "ZOHOSALESIQ",
           action: "reply",
           replies: ["Enter Class Name:"],
           input: {
@@ -499,6 +489,7 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
 
       if (!message || message.trim().length < 2) {
         return res.json({
+          platform: "ZOHOSALESIQ",
           action: "reply",
           replies: ["Please enter a valid name (at least 2 characters):"],
           input: {
@@ -515,6 +506,7 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
       sessionStore.set(sessionId, session);
 
       return res.json({
+        platform: "ZOHOSALESIQ",
         action: "reply",
         replies: ["Select the day for the class:"],
         input: {
@@ -554,6 +546,7 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
       ];
       if (!validDays.includes(dayValue)) {
         return res.json({
+          platform: "ZOHOSALESIQ",
           action: "reply",
           replies: ["Invalid day selected. Please try again."],
           input: {
@@ -582,6 +575,7 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
       const nextDate = getNextDateForDay(dayValue);
 
       return res.json({
+        platform: "ZOHOSALESIQ",
         action: "reply",
         replies: ["These are the available slots, please select one."],
         input: {
@@ -628,6 +622,7 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
         const nextDate = getNextDateForDay(session.classScheduleData.day);
 
         return res.json({
+          platform: "ZOHOSALESIQ",
           action: "reply",
           replies: ["Please select a valid time slot:"],
           input: {
@@ -646,6 +641,7 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
       sessionStore.set(sessionId, session);
 
       return res.json({
+        platform: "ZOHOSALESIQ",
         action: "reply",
         replies: [
           "Please enter any additional notes for the class (or type 'skip' for no notes):",
@@ -668,6 +664,7 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
         `Is this correct?`;
 
       return res.json({
+        platform: "ZOHOSALESIQ",
         action: "reply",
         replies: [confirmation],
         suggestions: [
@@ -703,13 +700,13 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
           sessionStore.set(sessionId, session);
 
           return res.json({
+            platform: "ZOHOSALESIQ",
             action: "reply",
             replies: [confirmation],
             suggestions: [
               "👥 View Members",
               "📝 Update Profile",
               "📅 Add Class Schedule",
-              "🚨 Report an Issue",
               "🤖 Talk to AI Assistant",
             ],
           });
@@ -724,6 +721,7 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
               (err) => err.message
             );
             return res.json({
+              platform: "ZOHOSALESIQ",
               action: "reply",
               replies: [
                 "Validation error: " + validationErrors.join(", "),
@@ -734,6 +732,7 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
           }
 
           return res.json({
+            platform: "ZOHOSALESIQ",
             action: "reply",
             replies: [
               "Sorry, there was an error creating the class schedule. Please try again later.",
@@ -747,6 +746,7 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
         sessionStore.set(sessionId, session);
 
         return res.json({
+          platform: "ZOHOSALESIQ",
           action: "reply",
           replies: ["Let's start over. Please enter class name:"],
           input: {
@@ -758,6 +758,7 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
         });
       } else {
         return res.json({
+          platform: "ZOHOSALESIQ",
           action: "reply",
           replies: ["Please select a valid option:"],
           suggestions: [
@@ -776,6 +777,7 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
     console.error("❌ [TRAINER] Error in add class schedule:", error);
 
     return res.json({
+      platform: "ZOHOSALESIQ",
       action: "reply",
       replies: [
         "Sorry, there was an error processing your request. Please try again later.",
