@@ -399,7 +399,7 @@ exports.handleFreeTrial = (message, res, session, visitorId) => {
       ];
       const dayOfWeek = days[selectedDate.getDay()];
 
-      // Parse the time
+      // Parse the times
       const [hours, minutes] = timeStr.split(":").map(Number);
       const timeInMinutes = hours * 60 + minutes;
 
