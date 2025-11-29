@@ -137,7 +137,6 @@ function showMemberDashboard(res, session, visitorId) {
       "👤 Update Profile",
       "📊 BMI Calculator",
       "🤖 Talk to AI Assistant",
-      "⚠️ Report a Problem",
     ],
   };
 
@@ -235,7 +234,6 @@ async function handleMembershipStatus(message, res, session, visitorId) {
         "👤 Update Profile",
         "📊 BMI Calculator",
         "🤖 Talk to AI Assistant",
-        "⚠️ Report a Problem",
       ],
     });
   } catch (error) {
@@ -688,7 +686,6 @@ async function handleShowClass(message, res, session, visitorId) {
             "👤 Update Profile",
             "📊 BMI Calculator",
             "🤖 Talk to AI Assistant",
-            "⚠️ Report a Problem",
           ],
         });
       }
@@ -771,7 +768,6 @@ async function handleShowClass(message, res, session, visitorId) {
             "👤 Update Profile",
             "📊 BMI Calculator",
             "🤖 Talk to AI Assistant",
-            "⚠️ Report a Problem",
           ],
         });
       }
@@ -1067,7 +1063,6 @@ async function handleUpdateProfile(message, res, session, visitorId) {
             "👤 Update Profile",
             "📊 BMI Calculator",
             "🤖 Talk to AI Assistant",
-            "⚠️ Report a Problem",
           ],
         });
       } else if (message === "❌ No" || message === "No") {
@@ -1271,7 +1266,6 @@ async function handleBMICalculator(message, res, session, visitorId) {
           "👤 Update Profile",
           "📊 BMI Calculator",
           "🤖 Talk to AI Assistant",
-          "⚠️ Report a Problem",
         ],
       });
     }
