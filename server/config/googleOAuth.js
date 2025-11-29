@@ -1,5 +1,4 @@
 const { google } = require("googleapis");
-require("dotenv").config();
 
 // ✅ Validate required environment variables
 const requiredEnvVars = [

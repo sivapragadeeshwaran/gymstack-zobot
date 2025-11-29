@@ -1,6 +1,6 @@
 // controllers/aiAssistantController.js
 const axios = require("axios");
-require("dotenv").config();
+
 const sessionStore = require("../utils/sessionStore");
 
 // OAuth Token Generator

@@ -1,4 +1,3 @@
-require("dotenv").config();
 const cron = require("node-cron");
 const nodemailer = require("nodemailer");
 const User = require("../Models/user-model");

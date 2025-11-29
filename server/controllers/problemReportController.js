@@ -1,6 +1,5 @@
 const sessionStore = require("../utils/sessionStore");
 const nodemailer = require("nodemailer");
-require("dotenv").config();
 
 // Configure nodemailer transporter
 const transporter = nodemailer.createTransport({
