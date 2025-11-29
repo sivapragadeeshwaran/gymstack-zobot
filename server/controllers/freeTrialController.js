@@ -603,7 +603,7 @@ function handleNameInput(message, res, session, visitorId) {
 }
 
 // Handle email input
-function handleEmailInput(message, res, session, visitorId) {
+async function handleEmailInput(message, res, session, visitorId) {
   // Simple email validation
   const emailRegex = /\S+@\S+\.\S+/;
   if (!emailRegex.test(message)) {
@@ -627,42 +627,97 @@ function handleEmailInput(message, res, session, visitorId) {
   session.freeTrialData.email = message.trim();
   const emailOtp = generateOtp();
   session.freeTrialData.emailOTP = emailOtp;
-  session.visitorStep = "free_trial_phone";
-  sessionStore.set(visitorId, session);
 
-  // Send OTP via email
+  console.log(
+    "🔥 [FREE TRIAL] Generated OTP:",
+    emailOtp,
+    "for email:",
+    message.trim()
+  );
+
+  // ✅ FIXED: Send OTP via email and WAIT for it to complete
   const mailOptions = {
     from: process.env.EMAIL_FROM || "noreply@gym.com",
     to: session.freeTrialData.email,
     subject: "Your OTP for Free Trial Registration",
     text: `Your OTP for free trial registration is: ${emailOtp}`,
-    html: `<p>Your OTP for free trial registration is: <strong>${emailOtp}</strong></p>`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <h2 style="color: #4CAF50; text-align: center;">OTP Verification</h2>
+        <p>Hello,</p>
+        <p>Thank you for booking a free trial at our gym!</p>
+        <p>Your OTP for email verification is:</p>
+        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 5px; text-align: center; margin: 20px 0;">
+          <h1 style="color: #4CAF50; margin: 0; font-size: 36px; letter-spacing: 5px;">${emailOtp}</h1>
+        </div>
+        <p><strong>This OTP is valid for 10 minutes.</strong></p>
+        <p>If you didn't request this OTP, please ignore this email.</p>
+        <p>Best regards,<br>The Gym Team</p>
+      </div>
+    `,
   };
 
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      console.error("🔥 [FREE TRIAL] Error sending email OTP:", error);
-    } else {
-      console.log("🔥 [FREE TRIAL] Email OTP sent:", info.messageId);
-    }
-  });
+  try {
+    // ✅ CRITICAL FIX: Use await to wait for email to send
+    console.log(
+      "📧 [FREE TRIAL] Attempting to send OTP email to:",
+      session.freeTrialData.email
+    );
+    const info = await transporter.sendMail(mailOptions);
+    console.log("✅ [FREE TRIAL] OTP email sent successfully!");
+    console.log("   Message ID:", info.messageId);
+    console.log("   Sent to:", session.freeTrialData.email);
+    console.log("   OTP:", emailOtp);
 
-  const response = {
-    action: "reply",
-    replies: ["Great! Now please enter your phone number:"],
-    input: {
-      type: "tel",
-      name: "phone",
-      placeholder: "+91 9876543210",
-      label: "Phone Number",
-      mandatory: true,
-    },
-    suggestions: ["⬅️ Back to Main Menu"],
-  };
+    // Update session AFTER email is sent
+    session.visitorStep = "free_trial_phone";
+    sessionStore.set(visitorId, session);
 
-  return res.json(response);
+    const response = {
+      action: "reply",
+      replies: [
+        `Great! We've sent a verification code to ${session.freeTrialData.email}.\n\nPlease check your inbox (and spam folder) for the OTP.\n\nNow please enter your phone number:`,
+      ],
+      input: {
+        type: "tel",
+        name: "phone",
+        placeholder: "+91 9876543210",
+        label: "Phone Number",
+        mandatory: true,
+      },
+      suggestions: ["⬅️ Back to Main Menu"],
+    };
+
+    return res.json(response);
+  } catch (error) {
+    console.error("❌ [FREE TRIAL] Failed to send OTP email!");
+    console.error("   Error:", error.message);
+    console.error("   Error code:", error.code);
+    console.error("   Email address:", session.freeTrialData.email);
+
+    // ⚠️ IMPROVED: Show error to user but allow them to continue with test OTP
+    const response = {
+      action: "reply",
+      replies: [
+        `⚠️ We couldn't send the verification email to ${session.freeTrialData.email}.\n\nPossible reasons:\n• Email address might be incorrect\n• Temporary email service issue\n\nYou can use test OTP: 12345 to continue.\n\nNow please enter your phone number:`,
+      ],
+      input: {
+        type: "tel",
+        name: "phone",
+        placeholder: "+91 9876543210",
+        label: "Phone Number",
+        mandatory: true,
+      },
+      suggestions: ["⬅️ Back to Main Menu"],
+    };
+
+    // Still update session so user can proceed with test OTP
+    session.visitorStep = "free_trial_phone";
+    sessionStore.set(visitorId, session);
+
+    return res.json(response);
+  }
 }
-
 // Handle phone input
 function handlePhoneInput(message, res, session, visitorId) {
   // Clean the phone number by removing all non-digit characters

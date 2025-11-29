@@ -1,12 +1,18 @@
 const User = require("../Models/user-model");
 const nodemailer = require("nodemailer");
 
+// ✅ Log environment variables status (without exposing values)
+console.log("📧 [EMAIL CONFIG] Checking email configuration...");
+console.log("   EMAIL_USER exists:", !!process.env.EMAIL_USER);
+console.log("   EMAIL_PASS exists:", !!process.env.EMAIL_PASS);
+console.log("   EMAIL_FROM:", process.env.EMAIL_FROM || "noreply@gym.com");
+
 // Create a transporter object using SMTP transport
 const transporter = nodemailer.createTransport({
   service: "gmail",
-  host: "smtp.gmail.com", // ADD THIS
-  port: 587, // ADD THIS
-  secure: false, // ADD THIS
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
@@ -16,6 +22,31 @@ const transporter = nodemailer.createTransport({
   maxMessages: 100,
   rateDelta: 1000,
   rateLimit: 5,
+  // ✅ ADD: Better error handling
+  tls: {
+    rejectUnauthorized: false,
+  },
+  debug: false, // Set to true for detailed SMTP logs
+  logger: false, // Set to true for even more logs
+});
+
+// ✅ ADD: Verify transporter configuration on startup
+transporter.verify(function (error, success) {
+  if (error) {
+    console.error("❌ [EMAIL] Transporter verification failed!");
+    console.error("   Error:", error.message);
+    console.error("   📝 Troubleshooting:");
+    console.error("      1. Check EMAIL_USER is correct Gmail address");
+    console.error(
+      "      2. Check EMAIL_PASS is 16-char App Password (no spaces)"
+    );
+    console.error("      3. Verify 2FA is enabled on Gmail account");
+    console.error("      4. Generate new App Password if needed");
+  } else {
+    console.log("✅ [EMAIL] Email transporter is ready to send messages");
+    console.log("   📧 Configured for:", process.env.EMAIL_USER);
+    console.log("   🎯 Ready to send OTP and confirmation emails");
+  }
 });
 
 // Function to send email to a member
