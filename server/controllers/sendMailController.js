@@ -5,14 +5,17 @@ const nodemailer = require("nodemailer");
 console.log("📧 [EMAIL CONFIG] Checking email configuration...");
 console.log("   EMAIL_USER exists:", !!process.env.EMAIL_USER);
 console.log("   EMAIL_PASS exists:", !!process.env.EMAIL_PASS);
-console.log("   EMAIL_FROM:", process.env.EMAIL_FROM || "noreply@gym.com");
+console.log(
+  "   EMAIL_USER:",
+  process.env.EMAIL_USER || "Not set - will use noreply@gym.com"
+);
 
 // Create a transporter object using SMTP transport
 const transporter = nodemailer.createTransport({
   service: "gmail",
   host: "smtp.gmail.com",
   port: 587,
-  secure: false,
+  secure: false, // Use TLS
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
@@ -22,15 +25,14 @@ const transporter = nodemailer.createTransport({
   maxMessages: 100,
   rateDelta: 1000,
   rateLimit: 5,
-  // ✅ ADD: Better error handling
   tls: {
     rejectUnauthorized: false,
   },
-  debug: false, // Set to true for detailed SMTP logs
-  logger: false, // Set to true for even more logs
+  debug: false,
+  logger: false,
 });
 
-// ✅ ADD: Verify transporter configuration on startup
+// ✅ Verify transporter configuration on startup
 transporter.verify(function (error, success) {
   if (error) {
     console.error("❌ [EMAIL] Transporter verification failed!");
@@ -114,7 +116,7 @@ async function sendExpiryEmail(member, daysUntilExpiry) {
     }
 
     const mailOptions = {
-      from: process.env.EMAIL_FROM || "noreply@gym.com",
+      from: process.env.EMAIL_USER || "Gym Management <noreply@gym.com>",
       to: member.email,
       subject: subject,
       text: message,
@@ -123,16 +125,21 @@ async function sendExpiryEmail(member, daysUntilExpiry) {
 
     // Send the email
     const info = await transporter.sendMail(mailOptions);
-
+    console.log(`✅ [EMAIL] Sent to ${member.email}: ${info.messageId}`);
     return { success: true, email: member.email, messageId: info.messageId };
   } catch (error) {
-    console.error(`Error sending email to ${member.email}:`, error);
+    console.error(
+      `❌ [EMAIL] Error sending to ${member.email}:`,
+      error.message
+    );
     return { success: false, email: member.email, error: error.message };
   }
 }
 
 // Main function to get expired members and send emails
 async function sendExpiryEmails() {
+  console.log("🔥 [EMAIL] Starting to send expiry emails");
+
   try {
     // Get current date
     const today = new Date();
@@ -168,6 +175,14 @@ async function sendExpiryEmails() {
         $lt: dayAfterTomorrow,
       },
     }).populate("membershipPlan");
+
+    console.log(`🔥 [EMAIL] Found ${expiredMembers.length} expired members`);
+    console.log(
+      `🔥 [EMAIL] Found ${expiringIn1Day.length} members expiring in 1 day`
+    );
+    console.log(
+      `🔥 [EMAIL] Found ${expiringIn2Days.length} members expiring in 2 days`
+    );
 
     const results = [];
     const allMembers = [
@@ -208,13 +223,17 @@ async function sendExpiryEmails() {
     const successful = results.filter((r) => r.success).length;
     const failed = results.filter((r) => !r.success).length;
 
+    console.log(
+      `✅ [EMAIL] Email sending completed: ${successful} successful, ${failed} failed`
+    );
+
     return {
       success: true,
       message: `Email sending completed: ${successful} successful, ${failed} failed`,
       results: results,
     };
   } catch (error) {
-    console.error("🔥 [EMAIL] Error in sendExpiryEmails:", error);
+    console.error("❌ [EMAIL] Error in sendExpiryEmails:", error);
     return {
       success: false,
       message: `Error sending emails: ${error.message}`,
@@ -225,9 +244,11 @@ async function sendExpiryEmails() {
 
 // Function to send a test email
 async function sendTestEmail(toEmail) {
+  console.log(`🔥 [EMAIL] Attempting to send test email to ${toEmail}`);
+
   try {
     const mailOptions = {
-      from: process.env.EMAIL_FROM || "noreply@gym.com",
+      from: process.env.EMAIL_USER || "Gym Management <noreply@gym.com>",
       to: toEmail,
       subject: "Test Email from Gym Management System",
       text: "This is a test email from the Gym Management System. If you receive this, email configuration is working correctly.",
@@ -235,6 +256,7 @@ async function sendTestEmail(toEmail) {
     };
 
     const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ [EMAIL] Test email sent to ${toEmail}: ${info.messageId}`);
 
     return {
       success: true,
@@ -242,7 +264,10 @@ async function sendTestEmail(toEmail) {
       messageId: info.messageId,
     };
   } catch (error) {
-    console.error(`Error sending test email to ${toEmail}:`, error);
+    console.error(
+      `❌ [EMAIL] Error sending test email to ${toEmail}:`,
+      error.message
+    );
     return {
       success: false,
       message: `Error sending test email: ${error.message}`,
@@ -253,6 +278,8 @@ async function sendTestEmail(toEmail) {
 
 // Function to send welcome email with credentials to new users
 async function sendWelcomeEmail(userData, password, role) {
+  console.log(`🔥 [EMAIL] Sending welcome email to ${userData.email}`);
+
   try {
     // Determine role-specific content
     let roleSpecificContent = "";
@@ -288,6 +315,7 @@ async function sendWelcomeEmail(userData, password, role) {
     const subject = `Welcome to Our Gym - Your ${
       role.charAt(0).toUpperCase() + role.slice(1)
     } Account Details`;
+
     const message = `
       Dear ${userData.username},
       
@@ -309,7 +337,7 @@ async function sendWelcomeEmail(userData, password, role) {
     `;
 
     const mailOptions = {
-      from: process.env.EMAIL_FROM || "noreply@gym.com",
+      from: process.env.EMAIL_USER || "Gym Management <noreply@gym.com>",
       to: userData.email,
       subject: subject,
       text: message,
@@ -318,11 +346,25 @@ async function sendWelcomeEmail(userData, password, role) {
 
     // Send the email
     const info = await transporter.sendMail(mailOptions);
+    console.log(
+      `✅ [EMAIL] Welcome email sent to ${userData.email}: ${info.messageId}`
+    );
 
-    return { success: true, email: userData.email, messageId: info.messageId };
+    return {
+      success: true,
+      email: userData.email,
+      messageId: info.messageId,
+    };
   } catch (error) {
-    console.error(`Error sending welcome email to ${userData.email}:`, error);
-    return { success: false, email: userData.email, error: error.message };
+    console.error(
+      `❌ [EMAIL] Error sending welcome email to ${userData.email}:`,
+      error.message
+    );
+    return {
+      success: false,
+      email: userData.email,
+      error: error.message,
+    };
   }
 }
 

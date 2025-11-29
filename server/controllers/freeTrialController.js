@@ -83,7 +83,7 @@ function sendBookingConfirmationEmail(session) {
   `;
 
   const mailOptions = {
-    from: process.env.EMAIL_FROM || "noreply@gym.com",
+    from: process.env.EMAIL_USER || "noreply@gym.com",
     to: email,
     subject: "Your Free Trial Booking Confirmation",
     html: emailContent,
@@ -135,7 +135,7 @@ function sendBookingCancellationEmail(session) {
   `;
 
   const mailOptions = {
-    from: process.env.EMAIL_FROM || "noreply@gym.com",
+    from: process.env.EMAIL_USER || "noreply@gym.com",
     to: email,
     subject: "Your Free Trial Booking Cancellation",
     html: emailContent,
@@ -232,7 +232,7 @@ function sendBookingUpdateEmail(session) {
   `;
 
   const mailOptions = {
-    from: process.env.EMAIL_FROM || "noreply@gym.com",
+    from: process.env.EMAIL_USER || "noreply@gym.com",
     to: email,
     subject: "Your Free Trial Booking Has Been Updated",
     html: emailContent,

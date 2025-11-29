@@ -1,63 +1,72 @@
-const fs = require("fs").promises;
-const path = require("path");
+// services/tokenService.js
+const Token = require("../Models/token-model");
 
-// ✅ Define the path where tokens will be stored
-const TOKEN_PATH = path.join(__dirname, "..", "config", "google-tokens.json");
+console.log("👉 [TOKEN SERVICE] Connect at: /api/google/auth");
 
 class TokenService {
   /**
-   * Save OAuth tokens to file system
+   * Save OAuth tokens to MongoDB
    * @param {Object} tokens - OAuth tokens from Google
    * @returns {Promise<boolean>}
    */
   async saveTokens(tokens) {
     try {
-      // Ensure the config directory exists
-      const configDir = path.dirname(TOKEN_PATH);
-      await fs.mkdir(configDir, { recursive: true });
+      console.log("💾 [TOKEN SERVICE] Saving tokens to MongoDB...");
 
       // Prepare token data with timestamp
       const tokenData = {
-        ...tokens,
-        saved_at: new Date().toISOString(),
-        expires_at: tokens.expiry_date
-          ? new Date(tokens.expiry_date).toISOString()
-          : null,
+        service: "google_calendar",
+        tokens: {
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          scope: tokens.scope,
+          token_type: tokens.token_type,
+          expiry_date: tokens.expiry_date,
+        },
+        userId: "system",
+        saved_at: new Date(),
       };
 
-      // Write tokens to file with pretty formatting
-      await fs.writeFile(
-        TOKEN_PATH,
-        JSON.stringify(tokenData, null, 2),
-        "utf-8"
+      // Upsert: update if exists, create if doesn't exist
+      await Token.findOneAndUpdate({ service: "google_calendar" }, tokenData, {
+        upsert: true, // Create if doesn't exist
+        new: true, // Return the updated document
+      });
+
+      console.log("✅ [TOKEN SERVICE] Tokens saved successfully to MongoDB");
+      console.log(
+        "   Expires:",
+        tokens.expiry_date
+          ? new Date(tokens.expiry_date).toISOString()
+          : "Unknown"
       );
 
       return true;
     } catch (error) {
       console.error("❌ [TOKEN SERVICE] Error saving tokens:", error.message);
-      console.error("📍 [TOKEN SERVICE] Attempted path:", TOKEN_PATH);
       throw new Error(`Failed to save tokens: ${error.message}`);
     }
   }
 
   /**
-   * Load OAuth tokens from file system
+   * Load OAuth tokens from MongoDB
    * @returns {Promise<Object|null>} - Returns tokens or null if not found
    */
   async loadTokens() {
     try {
-      // Check if token file exists
-      try {
-        await fs.access(TOKEN_PATH);
-      } catch (error) {
-        console.log("👉 [TOKEN SERVICE] Connect at: /api/google/auth");
+      console.log("📂 [TOKEN SERVICE] Loading tokens from MongoDB...");
+
+      const tokenDoc = await Token.findOne({ service: "google_calendar" });
+
+      if (!tokenDoc || !tokenDoc.tokens) {
+        console.warn("⚠️ [TOKEN SERVICE] No tokens found in database");
+        console.warn("   Please authenticate at: /api/google/auth");
         return null;
       }
 
-      // Read and parse token file
-      const data = await fs.readFile(TOKEN_PATH, "utf-8");
-      const tokens = JSON.parse(data);
+      const tokens = tokenDoc.tokens;
 
+      // Check token expiry
       if (tokens.expiry_date) {
         const expiryDate = new Date(tokens.expiry_date);
         const now = new Date();
@@ -68,60 +77,55 @@ class TokenService {
             "🔄 [TOKEN SERVICE] Token expired but refresh token available"
           );
         } else if (isExpired) {
-          console.log(
+          console.warn(
             "⚠️ [TOKEN SERVICE] Token expired and no refresh token - reconnection needed"
+          );
+        } else {
+          const hoursUntilExpiry = Math.floor(
+            (expiryDate - now) / (1000 * 60 * 60)
+          );
+          console.log(
+            `✅ [TOKEN SERVICE] Token valid for ${hoursUntilExpiry} more hours`
           );
         }
       }
 
+      console.log("✅ [TOKEN SERVICE] Tokens loaded successfully from MongoDB");
       return tokens;
     } catch (error) {
       console.error("❌ [TOKEN SERVICE] Error loading tokens:", error.message);
-
-      // If file is corrupted, log detailed error
-      if (error instanceof SyntaxError) {
-        console.error(
-          "❌ [TOKEN SERVICE] Token file is corrupted (invalid JSON)"
-        );
-        console.error(
-          "👉 [TOKEN SERVICE] Delete the file and reconnect: /api/google/auth"
-        );
-      }
-
       return null;
     }
   }
 
   /**
-   * Delete OAuth tokens (for disconnection)
+   * Delete OAuth tokens from MongoDB (for disconnection)
    * @returns {Promise<boolean>}
    */
   async deleteTokens() {
     try {
-      await fs.unlink(TOKEN_PATH);
+      console.log("🗑️ [TOKEN SERVICE] Deleting tokens from MongoDB...");
 
+      await Token.findOneAndDelete({ service: "google_calendar" });
+
+      console.log("✅ [TOKEN SERVICE] Tokens deleted successfully");
       return true;
     } catch (error) {
-      // If file doesn't exist, that's okay
-      if (error.code === "ENOENT") {
-        return true;
-      }
-
       console.error("❌ [TOKEN SERVICE] Error deleting tokens:", error.message);
       throw new Error(`Failed to delete tokens: ${error.message}`);
     }
   }
 
   /**
-   * Check if tokens exist
+   * Check if tokens exist in database
    * @returns {Promise<boolean>}
    */
   async tokensExist() {
     try {
-      await fs.access(TOKEN_PATH);
-
-      return true;
+      const tokenDoc = await Token.findOne({ service: "google_calendar" });
+      return !!(tokenDoc && tokenDoc.tokens && tokenDoc.tokens.access_token);
     } catch (error) {
+      console.error("❌ [TOKEN SERVICE] Error checking tokens:", error.message);
       return false;
     }
   }
@@ -160,7 +164,7 @@ class TokenService {
   }
 
   /**
-   * Verify token file integrity
+   * Verify token integrity
    * @returns {Promise<Object>}
    */
   async verifyTokenFile() {
@@ -170,7 +174,7 @@ class TokenService {
       if (!exists) {
         return {
           valid: false,
-          reason: "Token file does not exist",
+          reason: "Tokens do not exist in database",
           action: "Connect calendar at /api/google/auth",
         };
       }
@@ -180,20 +184,17 @@ class TokenService {
       if (!tokens) {
         return {
           valid: false,
-          reason: "Failed to load tokens",
-          action: "Delete token file and reconnect",
+          reason: "Failed to load tokens from database",
+          action: "Reconnect at /api/google/auth",
         };
       }
 
       // Check required fields
-      const requiredFields = ["access_token"];
-      const missingFields = requiredFields.filter((field) => !tokens[field]);
-
-      if (missingFields.length > 0) {
+      if (!tokens.access_token) {
         return {
           valid: false,
-          reason: `Missing required fields: ${missingFields.join(", ")}`,
-          action: "Delete token file and reconnect",
+          reason: "Missing access_token",
+          action: "Reconnect at /api/google/auth",
         };
       }
 
@@ -226,5 +227,5 @@ class TokenService {
   }
 }
 
-// ✅ Export a singleton instance
+// Export a singleton instance
 module.exports = new TokenService();
