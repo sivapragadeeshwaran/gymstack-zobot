@@ -60,7 +60,7 @@ exports.handleZobot = async (req, res) => {
     console.log("📝 Session updated:", {
       conversationId: sessionId,
       role: updatedSession.role,
-      email: updatedSession.authenticatedEmail,
+      email: updatedSession.authenticatedEmail || updatedSession.email,
       isAuthenticated: updatedSession.isAuthenticated,
     });
 
@@ -98,6 +98,7 @@ exports.handleZobot = async (req, res) => {
     });
   }
 
+  // ✅ Handle reset requests
   const isResetRequest =
     msg.toLowerCase().includes("edit info") ||
     msg.toLowerCase().includes("change email") ||
@@ -119,6 +120,7 @@ exports.handleZobot = async (req, res) => {
       adminStep: null,
       trainerStep: null,
       memberStep: null,
+      visitorStep: null,
     });
 
     return res.json({
@@ -155,7 +157,13 @@ exports.handleZobot = async (req, res) => {
     }
   }
 
-  // ✅ Extract email from user message
+  // ✅ NEW: Check if user is already identified as new visitor
+  if (session.role === "new_visitor" && session.email) {
+    console.log("✅ Routing to new visitor controller");
+    return newVisitorController.handleNewVisitor(msg, res, session, sessionId);
+  }
+
+  // ✅ Extract email from user message (only runs if not authenticated and not a new visitor)
   const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
   const emailMatch = msg.match(emailRegex);
 
@@ -188,6 +196,13 @@ exports.handleZobot = async (req, res) => {
 
     if (!user) {
       console.log("❌ User not found - routing to new visitor");
+
+      // ✅ Mark as new visitor in session
+      updateSession({
+        role: "new_visitor",
+        email: userEmail,
+      });
+
       return newVisitorController.handleNewVisitor(
         msg,
         res,
