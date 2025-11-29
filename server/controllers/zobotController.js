@@ -247,7 +247,6 @@ exports.handleZobot = async (req, res) => {
           "👥 View Members",
           "📝 Update Profile",
           "📅 Add Class Schedule",
-          "🚨 Report an Issue",
           "🤖 Talk to AI Assistant",
         ],
       });
@@ -264,7 +263,6 @@ exports.handleZobot = async (req, res) => {
           "👤 Update Profile",
           "📊 BMI Calculator",
           "🤖 Talk to AI Assistant",
-          "⚠️ Report a Problem",
         ],
       });
     }

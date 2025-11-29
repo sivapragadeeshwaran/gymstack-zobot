@@ -5,7 +5,6 @@ const Trainer = require("../Models/trainer-model");
 const ClassSchedule = require("../Models/classSchedule");
 const mongoose = require("mongoose");
 const aiAssistantController = require("./aiAssistantController");
-const problemReportController = require("./problemReportController"); // Import the problem report controller
 
 exports.handleMember = (message, res, session, visitorId) => {
   // Initialize member session if not already done
@@ -50,15 +49,6 @@ exports.handleMember = (message, res, session, visitorId) => {
         session.memberStep = "ai_assistant";
         sessionStore.set(visitorId, session);
         return handleAIAssistant(msg, res, session, visitorId);
-      case "⚠️ Report a Problem":
-        session.memberStep = "problem_report";
-        sessionStore.set(visitorId, session);
-        return problemReportController.handleProblemReport(
-          msg,
-          res,
-          session,
-          visitorId
-        );
       default:
         return showMemberDashboard(res, session, visitorId);
     }
@@ -100,19 +90,6 @@ exports.handleMember = (message, res, session, visitorId) => {
     // AI Assistant steps
     case "ai_assistant":
       return handleAIAssistant(msg, res, session, visitorId);
-
-    // Problem Report steps
-    case "problem_report":
-    case "problem_report_name":
-    case "problem_report_email":
-    case "problem_report_description":
-    case "problem_report_confirm":
-      return problemReportController.handleProblemReport(
-        msg,
-        res,
-        session,
-        visitorId
-      );
 
     default:
       session.memberStep = "dashboard";
