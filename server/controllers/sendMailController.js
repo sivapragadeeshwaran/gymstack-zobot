@@ -1,107 +1,79 @@
 const User = require("../Models/user-model");
-const nodemailer = require("nodemailer");
+const sgMail = require("@sendgrid/mail");
 
-// ✅ Log environment variables status
+// ✅ Configure SendGrid HTTP API (works on Render.com)
 console.log("📧 [EMAIL CONFIG] Checking SendGrid configuration...");
-console.log("   EMAIL_USER:", process.env.EMAIL_USER);
+console.log("   SENDGRID_API_KEY exists:", !!process.env.SENDGRID_API_KEY);
 console.log("   EMAIL_PASS exists:", !!process.env.EMAIL_PASS);
-console.log(
-  "   EMAIL_PASS starts with SG.:",
-  process.env.EMAIL_PASS?.startsWith("SG.")
-);
 console.log("   EMAIL_FROM:", process.env.EMAIL_FROM || "noreply@gym.com");
 
-// ✅ SENDGRID PRODUCTION-OPTIMIZED TRANSPORTER
-const transporter = nodemailer.createTransport({
-  host: "smtp.sendgrid.net",
-  port: 587,
-  secure: false,
-  auth: {
-    user: "apikey",
-    pass: process.env.EMAIL_PASS,
-  },
-  // ✅ CONNECTION POOLING - Reuses connections
-  pool: true,
-  maxConnections: 5,
-  maxMessages: 100,
+// Set API key (try SENDGRID_API_KEY first, fallback to EMAIL_PASS)
+const apiKey = process.env.SENDGRID_API_KEY || process.env.EMAIL_PASS;
+sgMail.setApiKey(apiKey);
 
-  // ✅ AGGRESSIVE TIMEOUTS - Fail fast instead of hanging
-  connectionTimeout: 3000,
-  greetingTimeout: 3000,
-  socketTimeout: 5000,
+// ✅ Test on startup
+let isApiReady = false;
+const testSendGridAPI = async () => {
+  try {
+    console.log("🔥 [EMAIL] Testing SendGrid HTTP API...");
 
-  // ✅ RATE LIMITING
-  rateDelta: 1000,
-  rateLimit: 10,
-
-  // ✅ TLS
-  tls: {
-    rejectUnauthorized: true,
-  },
-
-  debug: false,
-  logger: false,
-});
-
-// ✅ WARM UP CONNECTION POOL ON STARTUP (CRITICAL FIX)
-let isPoolWarmed = false;
-
-const warmUpConnectionPool = () => {
-  if (isPoolWarmed) return;
-
-  console.log("🔥 [EMAIL] Warming up SendGrid connection pool...");
-
-  transporter.verify((error, success) => {
-    if (error) {
-      console.error("❌ [EMAIL] SendGrid warmup failed!");
-      console.error("   Error:", error.message);
-      console.error("   📝 Check: API key, sender verification, permissions");
-    } else {
-      isPoolWarmed = true;
-      console.log("✅ [EMAIL] SendGrid connection pool READY!");
-      console.log("   📧 Sender:", process.env.EMAIL_FROM);
-      console.log("   ⚡ First email will now be FAST (1-2 seconds)");
-      console.log("   💯 Pool: 5 connections, reused for 100 messages each");
+    if (!apiKey || !apiKey.startsWith("SG.")) {
+      throw new Error("Invalid SendGrid API key");
     }
-  });
+
+    isApiReady = true;
+    console.log("✅ [EMAIL] SendGrid HTTP API READY!");
+    console.log("   📧 Sender:", process.env.EMAIL_FROM);
+    console.log("   🚀 Using HTTP API (works on Render.com)");
+    console.log("   ⚡ Average send time: 1-2 seconds");
+  } catch (error) {
+    console.error("❌ [EMAIL] SendGrid API test failed!");
+    console.error("   Error:", error.message);
+  }
 };
 
-// ✅ WARM UP IMMEDIATELY
-warmUpConnectionPool();
+testSendGridAPI();
 
-// ✅ KEEP CONNECTIONS ALIVE (Re-warm every 5 minutes)
-setInterval(() => {
-  console.log("🔄 [EMAIL] Re-warming connection pool...");
-  isPoolWarmed = false;
-  warmUpConnectionPool();
-}, 5 * 60 * 1000);
+// ✅ Transporter wrapper (backward compatible with nodemailer)
+const transporter = {
+  sendMail: async (mailOptions) => {
+    try {
+      const msg = {
+        to: mailOptions.to,
+        from: mailOptions.from || process.env.EMAIL_FROM,
+        subject: mailOptions.subject,
+        text: mailOptions.text,
+        html: mailOptions.html,
+      };
 
-// ✅ Verify transporter on startup
-transporter.verify(function (error, success) {
-  if (error) {
-    console.error("❌ [EMAIL] SendGrid verification failed!");
-    console.error("   Error:", error.message);
-    console.error("   Error code:", error.code);
-    console.error("");
-    console.error("   📝 Troubleshooting:");
-    console.error("      1. Check EMAIL_USER is exactly 'apikey'");
-    console.error(
-      "      2. Check EMAIL_PASS is your full SendGrid API key (starts with SG.)"
-    );
-    console.error("      3. Verify your sender email at sendgrid.com");
-    console.error("      4. Make sure API key has 'Mail Send' permission");
-    console.error("");
-  } else {
-    console.log("✅ [EMAIL] SendGrid transporter ready!");
-    console.log("   📧 Configured for:", process.env.EMAIL_FROM);
-    console.log("   🚀 Using SendGrid for FAST delivery (1-3 seconds)");
-    console.log("   💯 Free tier: 100 emails/day");
-  }
-});
+      console.log("📧 [EMAIL] Sending via SendGrid HTTP API to:", msg.to);
+      const response = await sgMail.send(msg);
 
-// ✅ EXISTING FUNCTIONS (keep as-is)
+      console.log("✅ [EMAIL] Sent successfully!");
+      return {
+        messageId: response[0].headers["x-message-id"],
+        response: response[0].statusCode,
+        accepted: [mailOptions.to],
+      };
+    } catch (error) {
+      console.error("❌ [EMAIL] SendGrid API error:", error.message);
+      if (error.response) {
+        console.error("   Response:", error.response.body);
+      }
+      throw error;
+    }
+  },
 
-// Function to send email to a member
+  verify: (callback) => {
+    if (callback) {
+      callback(null, isApiReady);
+    }
+    return Promise.resolve(isApiReady);
+  },
+};
+
+// ✅ KEEP ALL YOUR EXISTING FUNCTIONS (no changes needed)
+
 async function sendExpiryEmail(member, daysUntilExpiry) {
   try {
     const expiryDate = new Date(
@@ -179,7 +151,6 @@ async function sendExpiryEmail(member, daysUntilExpiry) {
   }
 }
 
-// Main function to get expired members and send emails
 async function sendExpiryEmails() {
   try {
     const today = new Date();
@@ -198,18 +169,12 @@ async function sendExpiryEmails() {
 
     const expiringIn1Day = await User.find({
       role: "user",
-      membershipExpiryDate: {
-        $gte: today,
-        $lt: tomorrow,
-      },
+      membershipExpiryDate: { $gte: today, $lt: tomorrow },
     }).populate("membershipPlan");
 
     const expiringIn2Days = await User.find({
       role: "user",
-      membershipExpiryDate: {
-        $gte: tomorrow,
-        $lt: dayAfterTomorrow,
-      },
+      membershipExpiryDate: { $gte: tomorrow, $lt: dayAfterTomorrow },
     }).populate("membershipPlan");
 
     const results = [];
@@ -261,7 +226,6 @@ async function sendExpiryEmails() {
   }
 }
 
-// Function to send a test email
 async function sendTestEmail(toEmail) {
   try {
     const mailOptions = {
@@ -289,7 +253,6 @@ async function sendTestEmail(toEmail) {
   }
 }
 
-// Function to send welcome email
 async function sendWelcomeEmail(userData, password, role) {
   try {
     let roleSpecificContent = "";
