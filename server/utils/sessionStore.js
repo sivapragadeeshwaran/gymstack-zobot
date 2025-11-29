@@ -4,28 +4,24 @@ class SessionStore {
   constructor() {
     this.sessions = new Map();
 
-    // ✅ Auto-cleanup old sessions every 1 hour
     setInterval(() => {
       this.cleanupOldSessions();
     }, 60 * 60 * 1000); // 1 hour
 
-    console.log("✅ SessionStore initialized with auto-cleanup");
+    console.log("✅ SessionStore initialized");
   }
 
-  // Get session for a conversation
   get(conversationId) {
     const session = this.sessions.get(conversationId);
 
     if (session) {
-      // Update last accessed time
       session.lastAccessed = Date.now();
 
-      // Check if session is too old (12 hours)
       const age = Date.now() - (session.createdAt || 0);
       const maxAge = 12 * 60 * 60 * 1000; // 12 hours
 
       if (age > maxAge) {
-        console.log(`⏰ Session expired for ${conversationId}, clearing...`);
+        console.log(`⏰ Session expired: ${conversationId}`);
         this.clear(conversationId);
         return null;
       }
@@ -34,48 +30,40 @@ class SessionStore {
     return session;
   }
 
-  // Create or update session
   set(conversationId, data) {
-    // Don't merge with existing - replace completely with new data
     const updatedSession = {
       ...data,
       lastAccessed: Date.now(),
     };
 
-    // Ensure createdAt is set
     if (!updatedSession.createdAt) {
       updatedSession.createdAt = Date.now();
     }
 
     this.sessions.set(conversationId, updatedSession);
 
-    // FIXED: Show actual role and email values
     console.log(`💾 Session saved for ${conversationId}:`, {
       role: updatedSession.role || "not set",
       email: updatedSession.authenticatedEmail || "not set",
       isAuthenticated: updatedSession.isAuthenticated || false,
-      ageSeconds: Math.floor((Date.now() - updatedSession.createdAt) / 1000),
     });
 
     return updatedSession;
   }
 
-  // Clear specific session
   clear(conversationId) {
     console.log(`🗑️ Clearing session: ${conversationId}`);
     return this.sessions.delete(conversationId);
   }
 
-  // Clear all sessions (use cautiously - for debugging only)
   clearAll() {
     console.log("🗑️ Clearing ALL sessions");
     this.sessions.clear();
   }
 
-  // Remove sessions older than specified time
   cleanupOldSessions() {
     const now = Date.now();
-    const maxAge = 12 * 60 * 60 * 1000; // 12 hours
+    const maxAge = 12 * 60 * 60 * 1000;
 
     let cleaned = 0;
 
@@ -95,12 +83,10 @@ class SessionStore {
     console.log(`📊 Active sessions: ${this.sessions.size}`);
   }
 
-  // Get session count (for debugging)
   getSessionCount() {
     return this.sessions.size;
   }
 
-  // List all active sessions (for debugging)
   listSessions() {
     const sessions = [];
     const now = Date.now();
@@ -112,9 +98,6 @@ class SessionStore {
         email: session.authenticatedEmail || "not set",
         isAuthenticated: session.isAuthenticated || false,
         ageMinutes: Math.floor((now - (session.createdAt || 0)) / 60000),
-        lastAccessedMinutes: Math.floor(
-          (now - (session.lastAccessed || 0)) / 60000
-        ),
       });
     }
 
