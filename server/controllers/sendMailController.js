@@ -15,27 +15,66 @@ console.log("   EMAIL_FROM:", process.env.EMAIL_FROM || "noreply@gym.com");
 const transporter = nodemailer.createTransport({
   host: "smtp.sendgrid.net",
   port: 587,
-  secure: false, // Use TLS
+  secure: false,
   auth: {
-    user: "apikey", // This must be exactly "apikey"
-    pass: process.env.EMAIL_PASS, // Your SendGrid API key
+    user: "apikey",
+    pass: process.env.EMAIL_PASS,
   },
-  // ✅ OPTIMIZED FOR SPEED
-  pool: true, // Connection pooling
-  maxConnections: 5, // Max 5 concurrent
-  maxMessages: 100, // 100 messages per connection
-  rateDelta: 1000, // 1 second window
-  rateLimit: 5, // 5 emails per second
-  connectionTimeout: 5000, // 5 second timeout
-  greetingTimeout: 5000,
+  // ✅ CONNECTION POOLING - Reuses connections
+  pool: true,
+  maxConnections: 5,
+  maxMessages: 100,
+
+  // ✅ AGGRESSIVE TIMEOUTS - Fail fast instead of hanging
+  connectionTimeout: 3000,
+  greetingTimeout: 3000,
   socketTimeout: 5000,
-  // ✅ TLS settings
+
+  // ✅ RATE LIMITING
+  rateDelta: 1000,
+  rateLimit: 10,
+
+  // ✅ TLS
   tls: {
-    rejectUnauthorized: true, // SendGrid has valid certs
+    rejectUnauthorized: true,
   },
+
   debug: false,
   logger: false,
 });
+
+// ✅ WARM UP CONNECTION POOL ON STARTUP (CRITICAL FIX)
+let isPoolWarmed = false;
+
+const warmUpConnectionPool = () => {
+  if (isPoolWarmed) return;
+
+  console.log("🔥 [EMAIL] Warming up SendGrid connection pool...");
+
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error("❌ [EMAIL] SendGrid warmup failed!");
+      console.error("   Error:", error.message);
+      console.error("   📝 Check: API key, sender verification, permissions");
+    } else {
+      isPoolWarmed = true;
+      console.log("✅ [EMAIL] SendGrid connection pool READY!");
+      console.log("   📧 Sender:", process.env.EMAIL_FROM);
+      console.log("   ⚡ First email will now be FAST (1-2 seconds)");
+      console.log("   💯 Pool: 5 connections, reused for 100 messages each");
+    }
+  });
+};
+
+// ✅ WARM UP IMMEDIATELY
+warmUpConnectionPool();
+
+// ✅ KEEP CONNECTIONS ALIVE (Re-warm every 5 minutes)
+setInterval(() => {
+  console.log("🔄 [EMAIL] Re-warming connection pool...");
+  isPoolWarmed = false;
+  warmUpConnectionPool();
+}, 5 * 60 * 1000);
 
 // ✅ Verify transporter on startup
 transporter.verify(function (error, success) {
