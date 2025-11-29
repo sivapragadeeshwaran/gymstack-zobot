@@ -1,84 +1,62 @@
 const User = require("../Models/user-model");
-const sgMail = require("@sendgrid/mail");
+const nodemailer = require("nodemailer");
 
-// ✅ Configure SendGrid HTTP API (works on Render.com)
-console.log("📧 [EMAIL CONFIG] Checking SendGrid configuration...");
-console.log("   SENDGRID_API_KEY exists:", !!process.env.SENDGRID_API_KEY);
+// ✅ Log environment variables status (without exposing values)
+console.log("📧 [EMAIL CONFIG] Checking email configuration...");
+console.log("   EMAIL_USER exists:", !!process.env.EMAIL_USER);
 console.log("   EMAIL_PASS exists:", !!process.env.EMAIL_PASS);
 console.log("   EMAIL_FROM:", process.env.EMAIL_FROM || "noreply@gym.com");
 
-// Set API key (try SENDGRID_API_KEY first, fallback to EMAIL_PASS)
-const apiKey = process.env.SENDGRID_API_KEY || process.env.EMAIL_PASS;
-sgMail.setApiKey(apiKey);
+// Create a transporter object using SMTP transport
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+  pool: true,
+  maxConnections: 5,
+  maxMessages: 100,
+  rateDelta: 1000,
+  rateLimit: 5,
+  // ✅ ADD: Better error handling
+  tls: {
+    rejectUnauthorized: false,
+  },
+  debug: false, // Set to true for detailed SMTP logs
+  logger: false, // Set to true for even more logs
+});
 
-// ✅ Test on startup
-let isApiReady = false;
-const testSendGridAPI = async () => {
-  try {
-    console.log("🔥 [EMAIL] Testing SendGrid HTTP API...");
-
-    if (!apiKey || !apiKey.startsWith("SG.")) {
-      throw new Error("Invalid SendGrid API key");
-    }
-
-    isApiReady = true;
-    console.log("✅ [EMAIL] SendGrid HTTP API READY!");
-    console.log("   📧 Sender:", process.env.EMAIL_FROM);
-    console.log("   🚀 Using HTTP API (works on Render.com)");
-    console.log("   ⚡ Average send time: 1-2 seconds");
-  } catch (error) {
-    console.error("❌ [EMAIL] SendGrid API test failed!");
+// ✅ ADD: Verify transporter configuration on startup
+transporter.verify(function (error, success) {
+  if (error) {
+    console.error("❌ [EMAIL] Transporter verification failed!");
     console.error("   Error:", error.message);
+    console.error("   📝 Troubleshooting:");
+    console.error("      1. Check EMAIL_USER is correct Gmail address");
+    console.error(
+      "      2. Check EMAIL_PASS is 16-char App Password (no spaces)"
+    );
+    console.error("      3. Verify 2FA is enabled on Gmail account");
+    console.error("      4. Generate new App Password if needed");
+  } else {
+    console.log("✅ [EMAIL] Email transporter is ready to send messages");
+    console.log("   📧 Configured for:", process.env.EMAIL_USER);
+    console.log("   🎯 Ready to send OTP and confirmation emails");
   }
-};
+});
 
-testSendGridAPI();
-
-// ✅ Transporter wrapper (backward compatible with nodemailer)
-const transporter = {
-  sendMail: async (mailOptions) => {
-    try {
-      const msg = {
-        to: mailOptions.to,
-        from: mailOptions.from || process.env.EMAIL_FROM,
-        subject: mailOptions.subject,
-        text: mailOptions.text,
-        html: mailOptions.html,
-      };
-
-      console.log("📧 [EMAIL] Sending via SendGrid HTTP API to:", msg.to);
-      const response = await sgMail.send(msg);
-
-      console.log("✅ [EMAIL] Sent successfully!");
-      return {
-        messageId: response[0].headers["x-message-id"],
-        response: response[0].statusCode,
-        accepted: [mailOptions.to],
-      };
-    } catch (error) {
-      console.error("❌ [EMAIL] SendGrid API error:", error.message);
-      if (error.response) {
-        console.error("   Response:", error.response.body);
-      }
-      throw error;
-    }
-  },
-
-  verify: (callback) => {
-    if (callback) {
-      callback(null, isApiReady);
-    }
-    return Promise.resolve(isApiReady);
-  },
-};
-
-// ✅ KEEP ALL YOUR EXISTING FUNCTIONS (no changes needed)
-
+// Function to send email to a member
 async function sendExpiryEmail(member, daysUntilExpiry) {
   try {
     const expiryDate = new Date(
       member.membershipExpiryDate
     ).toLocaleDateString();
+
+    // Determine email subject and content based on expiry status
     let subject, message;
 
     if (daysUntilExpiry < 0) {
@@ -143,7 +121,9 @@ async function sendExpiryEmail(member, daysUntilExpiry) {
       html: message.replace(/\n/g, "<br>"),
     };
 
+    // Send the email
     const info = await transporter.sendMail(mailOptions);
+
     return { success: true, email: member.email, messageId: info.messageId };
   } catch (error) {
     console.error(`Error sending email to ${member.email}:`, error);
@@ -151,30 +131,42 @@ async function sendExpiryEmail(member, daysUntilExpiry) {
   }
 }
 
+// Main function to get expired members and send emails
 async function sendExpiryEmails() {
   try {
+    // Get current date
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0); // Set to beginning of day
 
+    // Calculate dates for 1 day and 2 days from now
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const dayAfterTomorrow = new Date(today);
     dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
 
+    // Find users with expired memberships
     const expiredMembers = await User.find({
       role: "user",
       membershipExpiryDate: { $lt: today },
     }).populate("membershipPlan");
 
+    // Find users with memberships expiring in 1 day
     const expiringIn1Day = await User.find({
       role: "user",
-      membershipExpiryDate: { $gte: today, $lt: tomorrow },
+      membershipExpiryDate: {
+        $gte: today,
+        $lt: tomorrow,
+      },
     }).populate("membershipPlan");
 
+    // Find users with memberships expiring in 2 days
     const expiringIn2Days = await User.find({
       role: "user",
-      membershipExpiryDate: { $gte: tomorrow, $lt: dayAfterTomorrow },
+      membershipExpiryDate: {
+        $gte: tomorrow,
+        $lt: dayAfterTomorrow,
+      },
     }).populate("membershipPlan");
 
     const results = [];
@@ -184,10 +176,12 @@ async function sendExpiryEmails() {
       ...expiringIn2Days,
     ];
 
-    const batchSize = 10;
+    // Process emails in batches to avoid overwhelming the email server
+    const batchSize = 10; // Adjust based on your email server limits
     for (let i = 0; i < allMembers.length; i += batchSize) {
       const batch = allMembers.slice(i, i + batchSize);
 
+      // Process each batch in parallel
       const batchPromises = batch.map((member) => {
         let daysUntilExpiry;
         if (expiredMembers.includes(member)) {
@@ -200,14 +194,17 @@ async function sendExpiryEmails() {
         return sendExpiryEmail(member, daysUntilExpiry);
       });
 
+      // Wait for the current batch to complete before moving to the next
       const batchResults = await Promise.all(batchPromises);
       results.push(...batchResults);
 
+      // Add a small delay between batches to be respectful to the email server
       if (i + batchSize < allMembers.length) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
 
+    // Count successful and failed emails
     const successful = results.filter((r) => r.success).length;
     const failed = results.filter((r) => !r.success).length;
 
@@ -226,6 +223,7 @@ async function sendExpiryEmails() {
   }
 }
 
+// Function to send a test email
 async function sendTestEmail(toEmail) {
   try {
     const mailOptions = {
@@ -253,8 +251,10 @@ async function sendTestEmail(toEmail) {
   }
 }
 
+// Function to send welcome email with credentials to new users
 async function sendWelcomeEmail(userData, password, role) {
   try {
+    // Determine role-specific content
     let roleSpecificContent = "";
 
     if (role === "user") {
@@ -316,7 +316,9 @@ async function sendWelcomeEmail(userData, password, role) {
       html: message.replace(/\n/g, "<br>"),
     };
 
+    // Send the email
     const info = await transporter.sendMail(mailOptions);
+
     return { success: true, email: userData.email, messageId: info.messageId };
   } catch (error) {
     console.error(`Error sending welcome email to ${userData.email}:`, error);
