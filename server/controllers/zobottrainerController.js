@@ -204,7 +204,12 @@ async function handleViewMembers(message, res, session, sessionId) {
         platform: "ZOHOSALESIQ",
         action: "reply",
         replies: ["You don't have any members assigned to you yet."],
-        suggestions: ["⬅️ Back to Dashboard"],
+        suggestions: [
+          "👥 View Members",
+          "📝 Update Profile",
+          "📅 Add Class Schedule",
+          "🤖 Talk to AI Assistant",
+        ],
       });
     }
 
@@ -667,11 +672,7 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
         platform: "ZOHOSALESIQ",
         action: "reply",
         replies: [confirmation],
-        suggestions: [
-          "✅ Yes, Add Class",
-          "🔄 No, Start Over",
-          "⬅️ Back to Dashboard",
-        ],
+        suggestions: ["✅ Yes, Add Class", "⬅️ Back to Dashboard"],
       });
     }
 
@@ -740,32 +741,12 @@ async function handleAddClassSchedule(message, res, session, sessionId) {
             suggestions: ["⬅️ Back to Dashboard"],
           });
         }
-      } else if (message.includes("No") || message.includes("Start Over")) {
-        session.trainerStep = "add_class_title";
-        session.classScheduleData = null;
-        sessionStore.set(sessionId, session);
-
-        return res.json({
-          platform: "ZOHOSALESIQ",
-          action: "reply",
-          replies: ["Let's start over. Please enter class name:"],
-          input: {
-            type: "name",
-            placeholder: "Enter your class name",
-            value: "",
-            error: ["Enter name as per govt issued id"],
-          },
-        });
       } else {
         return res.json({
           platform: "ZOHOSALESIQ",
           action: "reply",
           replies: ["Please select a valid option:"],
-          suggestions: [
-            "✅ Yes, Add Class",
-            "🔄 No, Start Over",
-            "⬅️ Back to Dashboard",
-          ],
+          suggestions: ["✅ Yes, Add Class", "⬅️ Back to Dashboard"],
         });
       }
     }
