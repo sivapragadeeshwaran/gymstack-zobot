@@ -204,12 +204,7 @@ async function handleViewMembers(message, res, session, sessionId) {
         platform: "ZOHOSALESIQ",
         action: "reply",
         replies: ["You don't have any members assigned to you yet."],
-        suggestions: [
-          "👥 View Members",
-          "📝 Update Profile",
-          "📅 Add Class Schedule",
-          "🤖 Talk to AI Assistant",
-        ],
+        suggestions: ["⬅️ Back to Dashboard"],
       });
     }
 
