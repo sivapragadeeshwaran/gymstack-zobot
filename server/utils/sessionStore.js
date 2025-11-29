@@ -36,10 +36,8 @@ class SessionStore {
 
   // Create or update session
   set(conversationId, data) {
-    let existingSession = this.sessions.get(conversationId) || {};
-
+    // Don't merge with existing - replace completely with new data
     const updatedSession = {
-      ...existingSession,
       ...data,
       lastAccessed: Date.now(),
     };
@@ -51,10 +49,12 @@ class SessionStore {
 
     this.sessions.set(conversationId, updatedSession);
 
-    console.log(`💾 Session updated for ${conversationId}:`, {
-      role: updatedSession.role,
-      email: updatedSession.authenticatedEmail,
-      age: Date.now() - updatedSession.createdAt,
+    // FIXED: Show actual role and email values
+    console.log(`💾 Session saved for ${conversationId}:`, {
+      role: updatedSession.role || "not set",
+      email: updatedSession.authenticatedEmail || "not set",
+      isAuthenticated: updatedSession.isAuthenticated || false,
+      ageSeconds: Math.floor((Date.now() - updatedSession.createdAt) / 1000),
     });
 
     return updatedSession;
@@ -108,8 +108,9 @@ class SessionStore {
     for (const [id, session] of this.sessions.entries()) {
       sessions.push({
         conversationId: id,
-        role: session.role,
-        email: session.authenticatedEmail,
+        role: session.role || "not set",
+        email: session.authenticatedEmail || "not set",
+        isAuthenticated: session.isAuthenticated || false,
         ageMinutes: Math.floor((now - (session.createdAt || 0)) / 60000),
         lastAccessedMinutes: Math.floor(
           (now - (session.lastAccessed || 0)) / 60000

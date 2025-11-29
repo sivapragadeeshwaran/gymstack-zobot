@@ -36,10 +36,15 @@ exports.handleZobot = async (req, res) => {
   const sessionId = conversationId;
   const msg = req.body.message?.text || "";
 
+  console.log("🔑 Session ID:", sessionId);
+  console.log("💬 Message:", msg);
+
   // ========================================
   // 🔧 FIX #2: Check if this is a NEW conversation
   // ========================================
   let session = sessionStore.get(sessionId);
+
+  console.log("📦 Current session:", session);
 
   // If no session exists for this conversation, it's NEW
   const isNewConversation = !session;
@@ -59,14 +64,19 @@ exports.handleZobot = async (req, res) => {
 
   // Helper function to update session
   const updateSession = (data) => {
-    session = { ...session, ...data };
-    sessionStore.set(sessionId, session);
+    const updatedSession = { ...session, ...data };
+    sessionStore.set(sessionId, updatedSession);
+    session = updatedSession; // Update local reference
+
     console.log("📝 Session updated:", {
-      role: session.role,
-      stage: session.stage,
-      isAuthenticated: session.isAuthenticated,
-      email: session.authenticatedEmail,
+      conversationId: sessionId,
+      role: updatedSession.role,
+      email: updatedSession.authenticatedEmail,
+      isAuthenticated: updatedSession.isAuthenticated,
+      stage: updatedSession.stage,
     });
+
+    return updatedSession;
   };
 
   // ========================================
@@ -106,7 +116,6 @@ exports.handleZobot = async (req, res) => {
   if (isResetRequest) {
     console.log("📝 User requested to reset - clearing authentication");
 
-    // Clear role and authentication, but keep conversation
     updateSession({
       role: null,
       userId: null,
@@ -127,17 +136,21 @@ exports.handleZobot = async (req, res) => {
   // 🔧 FIX #5: Route ALREADY authenticated users to controllers
   // ========================================
   if (session.isAuthenticated && session.role && session.authenticatedEmail) {
-    console.log(`🎯 Routing authenticated user to ${session.role} controller`);
+    console.log("✅ User is authenticated, routing to controller");
+    console.log(`🎯 Role: ${session.role}`);
     console.log(`📧 Email: ${session.authenticatedEmail}`);
     console.log(`💬 Message: ${msg}`);
 
     switch (session.role) {
       case "admin":
+        console.log("➡️ Routing to admin controller");
         return adminController.handleAdmin(msg, res, session, sessionId);
       case "trainer":
+        console.log("➡️ Routing to trainer controller");
         return trainerController.handleTrainer(msg, res, session, sessionId);
       case "user":
       case "member":
+        console.log("➡️ Routing to member controller");
         return memberController.handleMember(msg, res, session, sessionId);
       default:
         console.log("❌ Unknown role:", session.role);
@@ -168,13 +181,12 @@ exports.handleZobot = async (req, res) => {
     console.log("📧 Email extracted from message:", userEmail);
   } else if (!session.isAuthenticated) {
     // No email and not authenticated - route to new visitor controller
-    console.log(
-      "❓ No email found and not authenticated - routing to new visitor controller"
-    );
+    console.log("❓ No email found and not authenticated");
+    console.log("➡️ Routing to new visitor controller");
     return newVisitorController.handleNewVisitor(msg, res, session, sessionId);
   } else {
     // Authenticated but no email in message - should not happen
-    console.log("⚠️ Authenticated but no email - this should not happen");
+    console.log("⚠️ Authenticated but no email in message");
     return res.json({
       action: "reply",
       replies: ["Something went wrong. Please type 'reset' to start over."],
@@ -191,6 +203,7 @@ exports.handleZobot = async (req, res) => {
 
     if (!user) {
       console.log("❌ User not found for email:", userEmail);
+      console.log("➡️ Routing to new visitor controller");
       return newVisitorController.handleNewVisitor(
         msg,
         res,
@@ -199,16 +212,16 @@ exports.handleZobot = async (req, res) => {
       );
     }
 
-    console.log("✅ User found:", {
-      email: user.email,
-      role: user.role,
-      username: user.username,
-    });
+    console.log("✅ User found in database:");
+    console.log("   - Email:", user.email);
+    console.log("   - Role:", user.role);
+    console.log("   - Username:", user.username);
+    console.log("   - ID:", user._id);
 
     // ========================================
     // 🔧 FIX #8: Store COMPLETE user info after successful authentication
     // ========================================
-    updateSession({
+    const updatedSession = updateSession({
       stage: "dashboard",
       role: user.role,
       userId: user._id.toString(),
@@ -221,18 +234,22 @@ exports.handleZobot = async (req, res) => {
       feeStatus: user.feeStatus,
     });
 
-    console.log(`✅ Authentication successful - Role: ${user.role}`);
+    console.log("✅ Authentication successful!");
+    console.log("📦 Updated session:", updatedSession);
 
     // ========================================
     // 🔧 FIX #9: Send role-specific dashboard IMMEDIATELY
     // ========================================
 
+    console.log(`🎨 Preparing ${user.role} dashboard...`);
+
     // Create role-specific dashboard messages
     if (user.role === "admin") {
+      console.log("✅ Sending ADMIN dashboard");
       return res.json({
         action: "reply",
         replies: [
-          `👋 Welcome Admin ${user.username}!\n\nAdmin Dashboard:`,
+          `👋 Welcome Admin ${user.username}!\n\nAdmin Dashboard Active`,
           {
             text: "What would you like to do?",
             input: {
@@ -251,10 +268,11 @@ exports.handleZobot = async (req, res) => {
         ],
       });
     } else if (user.role === "trainer") {
+      console.log("✅ Sending TRAINER dashboard");
       return res.json({
         action: "reply",
         replies: [
-          `💪 Hello Trainer ${user.username}!\n\nTrainer Dashboard:`,
+          `💪 Hello Trainer ${user.username}!\n\nTrainer Dashboard Active`,
           {
             text: "What would you like to manage?",
             input: {
@@ -271,10 +289,11 @@ exports.handleZobot = async (req, res) => {
       });
     } else {
       // user or member role
+      console.log("✅ Sending MEMBER dashboard");
       return res.json({
         action: "reply",
         replies: [
-          `🏋️ Hi ${user.username}!\n\nMember Dashboard:`,
+          `🏋️ Hi ${user.username}!\n\nMember Dashboard Active`,
           {
             text: "How can I help you today?",
             input: {
@@ -291,15 +310,13 @@ exports.handleZobot = async (req, res) => {
         ],
       });
     }
-
-    // NOTE: Next message from user will be routed to appropriate controller
-    // because session.isAuthenticated is now true
   } catch (err) {
     console.error("❌ Database error:", err);
+    console.error("❌ Error stack:", err.stack);
     return res.json({
       action: "reply",
       replies: [
-        "Sorry, there was an error. Please try again or type 'reset' to start over.",
+        "Sorry, there was an error connecting to the database. Please try again or type 'reset' to start over.",
       ],
     });
   }
