@@ -21,18 +21,18 @@ function generateRandomPassword(length = 8) {
   return password;
 }
 
-exports.handleAdmin = (message, res, session, visitorId) => {
+exports.handleAdmin = (message, res, session, sessionId) => {
   // Initialize admin session if not already done
   if (!session.adminStep) {
     session.adminStep = "dashboard";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
   }
 
   const msg = (message || "").toString().trim();
 
   // Handle response to reminder email question
   if (session.adminStep === "expiringMembers_reminder") {
-    return handleReminderResponse(msg, res, session, visitorId);
+    return handleReminderResponse(msg, res, session, sessionId);
   }
 
   // Handle view reports selection
@@ -40,42 +40,42 @@ exports.handleAdmin = (message, res, session, visitorId) => {
     session.adminStep === "viewReports_selectType" ||
     session.adminStep === "viewReports_viewing"
   ) {
-    return handleReportTypeSelection(msg, res, session, visitorId);
+    return handleReportTypeSelection(msg, res, session, sessionId);
   }
 
   // Handle navigation from View Reports
   if (session.adminStep === "viewReports") {
-    return handleViewReportsNavigation(msg, res, session, visitorId);
+    return handleViewReportsNavigation(msg, res, session, sessionId);
   }
 
   if (session.adminStep === "dashboard") {
     switch (msg) {
       case "➕ Add Member":
         session.adminStep = "addMember_name";
-        sessionStore.set(visitorId, session);
-        return handleAddMemberForm("", res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleAddMemberForm("", res, session, sessionId);
       case "🏋️ Add Trainer":
         session.adminStep = "addTrainer_name";
-        sessionStore.set(visitorId, session);
-        return handleAddTrainer("", res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleAddTrainer("", res, session, sessionId);
       case "🔑 Add Admin":
         session.adminStep = "addAdmin_name";
-        sessionStore.set(visitorId, session);
-        return handleAddAdmin("", res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleAddAdmin("", res, session, sessionId);
       case "💳 Add New Membership":
         session.adminStep = "addMembership_name";
-        sessionStore.set(visitorId, session);
-        return handleAddMembership("", res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleAddMembership("", res, session, sessionId);
       case "⏰ Expiring Members":
         session.adminStep = "expiringMembers";
-        sessionStore.set(visitorId, session);
-        return handleExpiringMembers(res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleExpiringMembers(res, session, sessionId);
       case "📊 View Reports":
-        return handleViewReports(res, session, visitorId);
+        return handleViewReports(res, session, sessionId);
       case "⬅️ Back to Dashboard":
-        return showAdminDashboard(res, session, visitorId);
+        return showAdminDashboard(res, session, sessionId);
       default:
-        return showAdminDashboard(res, session, visitorId);
+        return showAdminDashboard(res, session, sessionId);
     }
   }
 
@@ -89,7 +89,7 @@ exports.handleAdmin = (message, res, session, visitorId) => {
     case "addMember_membership":
     case "addMember_trainer":
     case "addMember_trainer_selection":
-      return handleAddMemberForm(msg, res, session, visitorId);
+      return handleAddMemberForm(msg, res, session, sessionId);
 
     // Add Trainer steps
     case "addTrainer_name":
@@ -97,31 +97,31 @@ exports.handleAdmin = (message, res, session, visitorId) => {
     case "addTrainer_phone":
     case "addTrainer_experience":
     case "addTrainer_specialization":
-      return handleAddTrainer(msg, res, session, visitorId);
+      return handleAddTrainer(msg, res, session, sessionId);
 
     // Add Admin steps
     case "addAdmin_email":
     case "addAdmin_name":
     case "addAdmin_phone":
-      return handleAddAdmin(msg, res, session, visitorId);
+      return handleAddAdmin(msg, res, session, sessionId);
 
     // Add Membership steps
     case "addMembership_name":
     case "addMembership_period":
     case "addMembership_price":
     case "addMembership_personalTraining":
-      return handleAddMembership(msg, res, session, visitorId);
+      return handleAddMembership(msg, res, session, sessionId);
 
     default:
       // fallback to dashboard
       session.adminStep = "dashboard";
-      sessionStore.set(visitorId, session);
-      return showAdminDashboard(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return showAdminDashboard(res, session, sessionId);
   }
 };
 
 // ----------------------- Dashboard -----------------------
-function showAdminDashboard(res, session, visitorId) {
+function showAdminDashboard(res, session, sessionId) {
   const greeting = `👋 Welcome Admin ${
     session.username || ""
   }! Here's your dashboard:`;
@@ -142,52 +142,52 @@ function showAdminDashboard(res, session, visitorId) {
 
   // Make sure session step is dashboard
   session.adminStep = "dashboard";
-  sessionStore.set(visitorId, session);
+  sessionStore.set(sessionId, session);
 
   // Zoho will send back the chosen suggestion as message text
   return res.json(payload);
 }
 
 // ----------------------- View Reports Navigation -----------------------
-function handleViewReportsNavigation(message, res, session, visitorId) {
+function handleViewReportsNavigation(message, res, session, sessionId) {
   switch (message) {
     case "➕ Add Member":
       session.adminStep = "addMember_name";
-      sessionStore.set(visitorId, session);
-      return handleAddMemberForm("", res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return handleAddMemberForm("", res, session, sessionId);
 
     case "🏋️ Add Trainer":
       session.adminStep = "addTrainer_name";
-      sessionStore.set(visitorId, session);
-      return handleAddTrainer("", res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return handleAddTrainer("", res, session, sessionId);
 
     case "🔑 Add Admin":
       session.adminStep = "addAdmin_name";
-      sessionStore.set(visitorId, session);
-      return handleAddAdmin("", res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return handleAddAdmin("", res, session, sessionId);
 
     case "💳 Add New Membership":
       session.adminStep = "addMembership_name";
-      sessionStore.set(visitorId, session);
-      return handleAddMembership("", res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return handleAddMembership("", res, session, sessionId);
 
     case "⏰ Expiring Members":
       session.adminStep = "expiringMembers";
-      sessionStore.set(visitorId, session);
-      return handleExpiringMembers(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return handleExpiringMembers(res, session, sessionId);
 
     case "⬅️ Back to Dashboard":
       session.adminStep = "dashboard";
-      sessionStore.set(visitorId, session);
-      return showAdminDashboard(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return showAdminDashboard(res, session, sessionId);
 
     default:
-      return handleViewReports(res, session, visitorId);
+      return handleViewReports(res, session, sessionId);
   }
 }
 
 // ----------------------- Expiring Members -----------------------
-async function handleExpiringMembers(res, session, visitorId) {
+async function handleExpiringMembers(res, session, sessionId) {
   try {
     // Get current date
     const today = new Date();
@@ -280,7 +280,7 @@ async function handleExpiringMembers(res, session, visitorId) {
 
     // Set session step to track if we're waiting for a response to the reminder question
     session.adminStep = "expiringMembers_reminder";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     const payload = {
       platform: "ZOHOSALESIQ",
@@ -314,7 +314,7 @@ async function handleExpiringMembers(res, session, visitorId) {
 }
 
 // ----------------------- Handle Reminder Response -----------------------
-async function handleReminderResponse(message, res, session, visitorId) {
+async function handleReminderResponse(message, res, session, sessionId) {
   if (message === "Yes") {
     // Immediately respond that the process has started
     const initialResponse = {
@@ -338,7 +338,7 @@ async function handleReminderResponse(message, res, session, visitorId) {
 
     // Reset session to dashboard
     session.adminStep = "dashboard";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Now, send the emails in the background without waiting
     sendExpiryEmails()
@@ -354,9 +354,9 @@ async function handleReminderResponse(message, res, session, visitorId) {
   } else if (message === "No") {
     // Reset session to dashboard
     session.adminStep = "dashboard";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
-    return showAdminDashboard(res, session, visitorId);
+    return showAdminDashboard(res, session, sessionId);
   } else {
     // Invalid response, ask again
     return res.json({
@@ -369,11 +369,11 @@ async function handleReminderResponse(message, res, session, visitorId) {
 }
 
 // ----------------------- Add Membership Flow -----------------------
-async function handleAddMembership(message, res, session, visitorId) {
+async function handleAddMembership(message, res, session, sessionId) {
   // Initialize form data if not exists
   if (!session.membershipData) {
     session.membershipData = {};
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
   }
 
   // Step 1: Membership Name
@@ -418,7 +418,7 @@ async function handleAddMembership(message, res, session, visitorId) {
     // Store name and move to next step
     session.membershipData.name = nameValue;
     session.adminStep = "addMembership_period";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Show period options
     return res.json({
@@ -477,7 +477,7 @@ async function handleAddMembership(message, res, session, visitorId) {
     // Store period and move to next step
     session.membershipData.period = periodValue;
     session.adminStep = "addMembership_price";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Show price input
     return res.json({
@@ -524,7 +524,7 @@ async function handleAddMembership(message, res, session, visitorId) {
     // Store price and move to next step
     session.membershipData.price = price;
     session.adminStep = "addMembership_personalTraining";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Show personal training options
     return res.json({
@@ -548,7 +548,7 @@ async function handleAddMembership(message, res, session, visitorId) {
 
     // Store personal training preference
     session.membershipData.includesPersonalTraining = message === "Yes";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Save to database
     try {
@@ -576,7 +576,7 @@ async function handleAddMembership(message, res, session, visitorId) {
       session.adminStep = "dashboard";
       const formData = session.membershipData;
       session.membershipData = null;
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         platform: "ZOHOSALESIQ",
@@ -627,16 +627,16 @@ async function handleAddMembership(message, res, session, visitorId) {
   // Fallback
 
   session.adminStep = "dashboard";
-  sessionStore.set(visitorId, session);
-  return showAdminDashboard(res, session, visitorId);
+  sessionStore.set(sessionId, session);
+  return showAdminDashboard(res, session, sessionId);
 }
 
 // ----------------------- Add Member Form (Step-by-Step) -----------------------
-async function handleAddMemberForm(message, res, session, visitorId) {
+async function handleAddMemberForm(message, res, session, sessionId) {
   // Initialize form data if not exists
   if (!session.memberFormData) {
     session.memberFormData = {};
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
   }
 
   // Step 1: Name
@@ -679,7 +679,7 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     // Store name and move to next step
     session.memberFormData.name = nameValue;
     session.adminStep = "addMember_email";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Show email input (email type is supported)
     return res.json({
@@ -742,7 +742,7 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     // Store email and move to next step
     session.memberFormData.email = message;
     session.adminStep = "addMember_dob";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Show DOB input as plain text (like name)
     return res.json({
@@ -810,7 +810,7 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     // Store DOB and move to next step
     session.memberFormData.dob = message;
     session.adminStep = "addMember_phone";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Show phone input with telephone type
     return res.json({
@@ -863,7 +863,7 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     // Store phone and move to next step
     session.memberFormData.phone = finalPhone; // Store clean phone number
     session.adminStep = "addMember_membership";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Fetch membership plans and show options
     try {
@@ -879,7 +879,7 @@ async function handleAddMemberForm(message, res, session, visitorId) {
 
         // Store plans in session for later use
         session.plansData = plans;
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         return res.json({
           platform: "ZOHOSALESIQ",
@@ -968,13 +968,13 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     session.memberFormData.includesPersonalTraining =
       selectedPlan.includesPersonalTraining;
 
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Check if membership includes personal training
     if (selectedPlan.includesPersonalTraining) {
       // Ask if they want a personal trainer
       session.adminStep = "addMember_trainer";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
       return res.json({
         platform: "ZOHOSALESIQ",
         action: "reply",
@@ -985,7 +985,7 @@ async function handleAddMemberForm(message, res, session, visitorId) {
       // If membership doesn't include personal training, proceed directly to add member
       session.memberFormData.personal_trainer = false;
       session.memberFormData.trainerAssigned = "Self";
-      return addMemberToDatabase(res, session, visitorId);
+      return addMemberToDatabase(res, session, sessionId);
     }
   }
 
@@ -1002,8 +1002,8 @@ async function handleAddMemberForm(message, res, session, visitorId) {
 
     if (message === "Yes") {
       session.adminStep = "addMember_trainer_selection";
-      sessionStore.set(visitorId, session);
-      return showTrainerSelection(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return showTrainerSelection(res, session, sessionId);
     } else {
       // User selected "No" - inform them to select trainer on website
 
@@ -1012,7 +1012,7 @@ async function handleAddMemberForm(message, res, session, visitorId) {
       return addMemberToDatabase(
         res,
         session,
-        visitorId,
+        sessionId,
         "Please inform the user to select a trainer on the website."
       );
     }
@@ -1066,24 +1066,24 @@ async function handleAddMemberForm(message, res, session, visitorId) {
     session.memberFormData.trainer_id = selectedTrainer._id;
     session.memberFormData.trainerAssigned = "Yes"; // Use "Yes" instead of trainer name
     session.memberFormData.personal_trainer = true;
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
-    return addMemberToDatabase(res, session, visitorId);
+    return addMemberToDatabase(res, session, sessionId);
   }
 
   // Fallback
 
   session.adminStep = "dashboard";
-  sessionStore.set(visitorId, session);
-  return showAdminDashboard(res, session, visitorId);
+  sessionStore.set(sessionId, session);
+  return showAdminDashboard(res, session, sessionId);
 }
 
 // ----------------------- Add Trainer Flow -----------------------
-async function handleAddTrainer(message, res, session, visitorId) {
+async function handleAddTrainer(message, res, session, sessionId) {
   // Initialize form data if not exists
   if (!session.trainerFormData) {
     session.trainerFormData = {};
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
   }
 
   // Step 1: Name
@@ -1126,7 +1126,7 @@ async function handleAddTrainer(message, res, session, visitorId) {
     // Store name and move to next step
     session.trainerFormData.name = nameValue;
     session.adminStep = "addTrainer_email";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Show email input (email type is supported)
     return res.json({
@@ -1189,7 +1189,7 @@ async function handleAddTrainer(message, res, session, visitorId) {
     // Store email and move to next step
     session.trainerFormData.email = message;
     session.adminStep = "addTrainer_phone";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Show phone input with telephone type
     return res.json({
@@ -1242,7 +1242,7 @@ async function handleAddTrainer(message, res, session, visitorId) {
     // Store phone and move to next step
     session.trainerFormData.phone = finalPhone; // Store clean phone number
     session.adminStep = "addTrainer_experience";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Show experience input as plain text
     return res.json({
@@ -1293,7 +1293,7 @@ async function handleAddTrainer(message, res, session, visitorId) {
     // Store experience and move to next step
     session.trainerFormData.experience = experience;
     session.adminStep = "addTrainer_specialization";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Show specialization input
     return res.json({
@@ -1320,7 +1320,7 @@ async function handleAddTrainer(message, res, session, visitorId) {
 
     // Store specialization
     session.trainerFormData.specialization = message.trim();
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Save to database
     try {
@@ -1385,7 +1385,7 @@ async function handleAddTrainer(message, res, session, visitorId) {
       session.adminStep = "dashboard";
       const formData = session.trainerFormData;
       session.trainerFormData = null;
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         platform: "ZOHOSALESIQ",
@@ -1442,16 +1442,16 @@ async function handleAddTrainer(message, res, session, visitorId) {
   }
 
   session.adminStep = "dashboard";
-  sessionStore.set(visitorId, session);
-  return showAdminDashboard(res, session, visitorId);
+  sessionStore.set(sessionId, session);
+  return showAdminDashboard(res, session, sessionId);
 }
 
 // ----------------------- Add Admin Flow -----------------------
-async function handleAddAdmin(message, res, session, visitorId) {
+async function handleAddAdmin(message, res, session, sessionId) {
   // Initialize form data if not exists
   if (!session.adminData) {
     session.adminData = {};
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
   }
 
   // Step 1: Name
@@ -1494,7 +1494,7 @@ async function handleAddAdmin(message, res, session, visitorId) {
     // Store name and move to next step
     session.adminData.name = nameValue;
     session.adminStep = "addAdmin_email";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Show email input
     return res.json({
@@ -1557,7 +1557,7 @@ async function handleAddAdmin(message, res, session, visitorId) {
     // Store email and move to next step
     session.adminData.email = message;
     session.adminStep = "addAdmin_phone";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Show phone input
     return res.json({
@@ -1609,7 +1609,7 @@ async function handleAddAdmin(message, res, session, visitorId) {
 
     // Store phone and move to next step
     session.adminData.phone = finalPhone; // Store clean phone number
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     // Save to database
     try {
@@ -1660,7 +1660,7 @@ async function handleAddAdmin(message, res, session, visitorId) {
       session.adminStep = "dashboard";
       const formData = session.adminData;
       session.adminData = null;
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         platform: "ZOHOSALESIQ",
@@ -1719,8 +1719,8 @@ async function handleAddAdmin(message, res, session, visitorId) {
   // Fallback
 
   session.adminStep = "dashboard";
-  sessionStore.set(visitorId, session);
-  return showAdminDashboard(res, session, visitorId);
+  sessionStore.set(sessionId, session);
+  return showAdminDashboard(res, session, sessionId);
 }
 
 // ----------------------- Helper Functions -----------------------
@@ -1748,7 +1748,7 @@ function calculateMembershipExpiry(period) {
 }
 
 // ----------------------- Trainer Selection -----------------------
-async function showTrainerSelection(res, session, visitorId) {
+async function showTrainerSelection(res, session, sessionId) {
   try {
     // Fetch all trainers from the database
     const trainers = await Trainer.find();
@@ -1772,7 +1772,7 @@ async function showTrainerSelection(res, session, visitorId) {
 
     // Store trainers in session for later use
     session.trainersData = trainers;
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     return res.json({
       platform: "ZOHOSALESIQ",
@@ -1802,7 +1802,7 @@ async function showTrainerSelection(res, session, visitorId) {
 async function addMemberToDatabase(
   res,
   session,
-  visitorId,
+  sessionId,
   additionalMessage = ""
 ) {
   try {
@@ -1909,7 +1909,7 @@ async function addMemberToDatabase(
     session.memberFormData = null;
     session.plansData = null;
     session.trainersData = null;
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     return res.json({
       platform: "ZOHOSALESIQ",

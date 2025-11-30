@@ -9,11 +9,11 @@ const freeTrialController = require("./freeTrialController");
 // Base URL for constructing absolute image paths
 const BASE_URL = process.env.BASE_URL || "https://yourdomain.com"; // Replace with your actual domain
 
-exports.handleNewVisitor = (message, res, session, visitorId) => {
+exports.handleNewVisitor = (message, res, session, sessionId) => {
   // Initialize visitor session if not already done
   if (!session.visitorStep) {
     session.visitorStep = "greeting";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
   }
 
   const msg = (message || "").toString().trim();
@@ -75,8 +75,8 @@ exports.handleNewVisitor = (message, res, session, visitorId) => {
   // Handle "Back to Main Menu" at any point
   if (msg === "⬅️ Back to Main Menu") {
     session.visitorStep = "greeting";
-    sessionStore.set(visitorId, session);
-    return showGreeting(res, session, visitorId);
+    sessionStore.set(sessionId, session);
+    return showGreeting(res, session, sessionId);
   }
 
   // Handle navigation
@@ -86,57 +86,57 @@ exports.handleNewVisitor = (message, res, session, visitorId) => {
       case "Membership Plans":
       case "💳 Membership Plans":
         session.visitorStep = "membership_plans";
-        sessionStore.set(visitorId, session);
-        return showMembershipPlans(res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return showMembershipPlans(res, session, sessionId);
 
       case "BMI Calculator":
       case "📊 BMI Calculator":
         session.visitorStep = "bmi_calculator";
-        sessionStore.set(visitorId, session);
-        return handleBMICalculator(msg, res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleBMICalculator(msg, res, session, sessionId);
 
       case "Our Trainers":
       case "🏋️‍♂️ Our Trainers":
         session.visitorStep = "trainers";
-        sessionStore.set(visitorId, session);
-        return showTrainers(res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return showTrainers(res, session, sessionId);
 
       case "Training Programs":
       case "📝 Training Programs":
         session.visitorStep = "training_programs";
-        sessionStore.set(visitorId, session);
-        return showTrainingPrograms(res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return showTrainingPrograms(res, session, sessionId);
 
       case "Gym Info":
       case "ℹ️ Gym Info":
         session.visitorStep = "gym_info";
-        sessionStore.set(visitorId, session);
-        return showGymInfo(res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return showGymInfo(res, session, sessionId);
 
       case "Contact Us":
       case "📞 Contact Us":
         session.visitorStep = "contact";
-        sessionStore.set(visitorId, session);
-        return handleContactForm(msg, res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleContactForm(msg, res, session, sessionId);
 
       case "🤖 Talk to AI Assistant":
         session.visitorStep = "ai_assistant";
-        sessionStore.set(visitorId, session);
-        return handleAIAssistant(msg, res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleAIAssistant(msg, res, session, sessionId);
 
       case "Book Free Trial":
       case "📅 Book Free Trial":
         session.visitorStep = "free_trial";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
         return freeTrialController.handleFreeTrial(
           msg,
           res,
           session,
-          visitorId
+          sessionId
         );
 
       default:
-        return showGreeting(res, session, visitorId);
+        return showGreeting(res, session, sessionId);
     }
   }
 
@@ -148,7 +148,7 @@ exports.handleNewVisitor = (message, res, session, visitorId) => {
     case "bmi_weight":
     case "bmi_gender":
     case "bmi_experience":
-      return handleBMICalculator(msg, res, session, visitorId);
+      return handleBMICalculator(msg, res, session, sessionId);
 
     // Contact form steps
     case "contact":
@@ -157,11 +157,11 @@ exports.handleNewVisitor = (message, res, session, visitorId) => {
     case "contact_subject":
     case "contact_message":
     case "contact_confirm":
-      return handleContactForm(msg, res, session, visitorId);
+      return handleContactForm(msg, res, session, sessionId);
 
     // AI Assistant steps
     case "ai_assistant":
-      return handleAIAssistant(msg, res, session, visitorId);
+      return handleAIAssistant(msg, res, session, sessionId);
 
     // Free Trial steps
     case "free_trial":
@@ -177,17 +177,17 @@ exports.handleNewVisitor = (message, res, session, visitorId) => {
     case "free_trial_booked":
     case "free_trial_update":
     case "free_trial_cancel":
-      return freeTrialController.handleFreeTrial(msg, res, session, visitorId);
+      return freeTrialController.handleFreeTrial(msg, res, session, sessionId);
 
     default:
       session.visitorStep = "greeting";
-      sessionStore.set(visitorId, session);
-      return showGreeting(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return showGreeting(res, session, sessionId);
   }
 };
 
 // ----------------------- Greeting -----------------------
-function showGreeting(res, session, visitorId) {
+function showGreeting(res, session, sessionId) {
   const greeting =
     "👋 Welcome to Strength Zone Gym! I'm your virtual assistant. How can I help you today?";
 
@@ -208,13 +208,13 @@ function showGreeting(res, session, visitorId) {
 
   // Make sure session step is greeting
   session.visitorStep = "greeting";
-  sessionStore.set(visitorId, session);
+  sessionStore.set(sessionId, session);
 
   return res.json(payload);
 }
 
 // ----------------------- Membership Plans -----------------------
-async function showMembershipPlans(res, session, visitorId) {
+async function showMembershipPlans(res, session, sessionId) {
   try {
     // Fetch all membership plans
     const plans = await Plan.find();
@@ -288,7 +288,7 @@ async function showMembershipPlans(res, session, visitorId) {
 
     // Reset session to greeting
     session.visitorStep = "greeting";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     return res.json(payload);
   } catch (error) {
@@ -304,19 +304,19 @@ async function showMembershipPlans(res, session, visitorId) {
 }
 
 // ----------------------- BMI Calculator -----------------------
-async function handleBMICalculator(message, res, session, visitorId) {
+async function handleBMICalculator(message, res, session, sessionId) {
   try {
     // Handle "Back to Main Menu" at any point
     if (message === "⬅️ Back to Main Menu") {
       session.visitorStep = "greeting";
-      sessionStore.set(visitorId, session);
-      return showGreeting(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return showGreeting(res, session, sessionId);
     }
 
     // Handle height input
     if (session.visitorStep === "bmi_calculator") {
       session.visitorStep = "bmi_height";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -343,7 +343,7 @@ async function handleBMICalculator(message, res, session, visitorId) {
       // Store height and move to weight input
       session.height = parseInt(message);
       session.visitorStep = "bmi_weight";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -370,7 +370,7 @@ async function handleBMICalculator(message, res, session, visitorId) {
       // Store weight and move to gender input
       session.weight = parseFloat(message);
       session.visitorStep = "bmi_gender";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -417,7 +417,7 @@ async function handleBMICalculator(message, res, session, visitorId) {
       session.bmiCategory = category;
       session.gender = gender;
       session.visitorStep = "bmi_experience";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       // Prepare response
       let response = `📊 BMI CALCULATOR RESULTS\n\n`;
@@ -440,13 +440,13 @@ async function handleBMICalculator(message, res, session, visitorId) {
       if (message === "No") {
         // Reset session to greeting
         session.visitorStep = "greeting";
-        sessionStore.set(visitorId, session);
-        return showGreeting(res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return showGreeting(res, session, sessionId);
       }
 
       if (message === "Yes") {
         session.visitorStep = "bmi_experience";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         return res.json({
           action: "reply",
@@ -533,7 +533,7 @@ async function handleBMICalculator(message, res, session, visitorId) {
 
         session.recommendedPrograms = recommendedPrograms.map((p) => p.name);
         session.visitorStep = "greeting";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         return res.json({
           action: "reply",
@@ -567,7 +567,7 @@ async function handleBMICalculator(message, res, session, visitorId) {
 }
 
 // ----------------------- Trainers -----------------------
-async function showTrainers(res, session, visitorId) {
+async function showTrainers(res, session, sessionId) {
   console.log("🔥 [NEW VISITOR] Showing trainers");
 
   try {
@@ -650,7 +650,7 @@ async function showTrainers(res, session, visitorId) {
 
     // Reset session to greeting
     session.visitorStep = "greeting";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     return res.json(payload);
   } catch (error) {
@@ -666,7 +666,7 @@ async function showTrainers(res, session, visitorId) {
 }
 
 // ----------------------- Training Programs -----------------------
-function showTrainingPrograms(res, session, visitorId) {
+function showTrainingPrograms(res, session, sessionId) {
   // Define training programs with descriptions
   const programs = [
     {
@@ -735,13 +735,13 @@ function showTrainingPrograms(res, session, visitorId) {
 
   // Reset session to greeting
   session.visitorStep = "greeting";
-  sessionStore.set(visitorId, session);
+  sessionStore.set(sessionId, session);
 
   return res.json(payload);
 }
 
 // ----------------------- Gym Info -----------------------
-function showGymInfo(res, session, visitorId) {
+function showGymInfo(res, session, sessionId) {
   // Gym timings
   const timings =
     `🕒 GYM TIMINGS\n\n` +
@@ -765,25 +765,25 @@ function showGymInfo(res, session, visitorId) {
 
   // Reset session to greeting
   session.visitorStep = "greeting";
-  sessionStore.set(visitorId, session);
+  sessionStore.set(sessionId, session);
 
   return res.json(payload);
 }
 
 // ----------------------- Contact Form -----------------------
-async function handleContactForm(message, res, session, visitorId) {
+async function handleContactForm(message, res, session, sessionId) {
   try {
     // Handle "Back to Main Menu" at any point
     if (message === "⬅️ Back to Main Menu") {
       session.visitorStep = "greeting";
-      sessionStore.set(visitorId, session);
-      return showGreeting(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return showGreeting(res, session, sessionId);
     }
 
     // Display contact form options and immediately ask for name
     if (session.visitorStep === "contact") {
       session.visitorStep = "contact_name";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         platform: "ZOHOSALESIQ",
@@ -839,7 +839,7 @@ async function handleContactForm(message, res, session, visitorId) {
 
       session.contactName = message;
       session.visitorStep = "contact_email";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         platform: "ZOHOSALESIQ",
@@ -876,7 +876,7 @@ async function handleContactForm(message, res, session, visitorId) {
 
       session.contactEmail = message;
       session.visitorStep = "contact_subject";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -897,7 +897,7 @@ async function handleContactForm(message, res, session, visitorId) {
 
       session.contactSubject = message;
       session.visitorStep = "contact_message";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -918,7 +918,7 @@ async function handleContactForm(message, res, session, visitorId) {
 
       session.contactMessage = message;
       session.visitorStep = "contact_confirm";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       // Show confirmation
       let response = `Please confirm your contact details:\n\n`;
@@ -943,7 +943,7 @@ async function handleContactForm(message, res, session, visitorId) {
 
         // Reset session to greeting
         session.visitorStep = "greeting";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         return res.json({
           action: "reply",
@@ -956,8 +956,8 @@ async function handleContactForm(message, res, session, visitorId) {
       } else if (message === "No") {
         // Go back to name input
         session.visitorStep = "contact_name";
-        sessionStore.set(visitorId, session);
-        return handleContactForm("", res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleContactForm("", res, session, sessionId);
       } else {
         return res.json({
           action: "reply",
@@ -979,12 +979,12 @@ async function handleContactForm(message, res, session, visitorId) {
 }
 
 // ----------------------- AI Assistant -----------------------
-function handleAIAssistant(message, res, session, visitorId) {
+function handleAIAssistant(message, res, session, sessionId) {
   // Delegate to the AI assistant controller
   return aiAssistantController.handleAIAssistant(
     message,
     res,
     session,
-    visitorId
+    sessionId
   );
 }

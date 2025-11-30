@@ -9,6 +9,10 @@ const WELCOME_IMAGE_URL =
   "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQOapmKhjiQxHZFrsTNCAuXciuQ8kJZT4E2wQ&s";
 const WELCOME_VIDEO_URL = "https://www.youtube.com/watch?v=tUykoP30Gb0";
 
+// 🔥 RECOMMENDED: 3 minutes for good user experience
+// Users won't get interrupted, but inactive sessions clear quickly
+const SESSION_TIMEOUT = 3 * 60 * 1000; // 3 minutes
+
 exports.handleZobot = async (req, res) => {
   console.log("🔥 Incoming Zobot Payload:");
   console.log(JSON.stringify(req.body, null, 2));
@@ -50,6 +54,31 @@ exports.handleZobot = async (req, res) => {
     };
     sessionStore.set(sessionId, session);
     console.log("✨ NEW CONVERSATION STARTED:", sessionId);
+  } else {
+    // 🔥 AUTO-RESET: Check session timeout and COMPLETELY reset if stale
+    const inactiveTime =
+      Date.now() - (session.lastAccessed || session.createdAt || 0);
+
+    if (inactiveTime > SESSION_TIMEOUT) {
+      console.log(
+        `⚠️ Stale session detected (inactive > ${
+          SESSION_TIMEOUT / 1000
+        }s), AUTO-RESETTING...`
+      );
+
+      // Clear the session completely first
+      sessionStore.clear(sessionId);
+
+      // Create fresh session with NO old data
+      session = {
+        welcomeShown: false,
+        conversationId: conversationId,
+        visitorId: visitorId,
+        createdAt: Date.now(),
+      };
+      sessionStore.set(sessionId, session);
+      console.log("✨ AUTO-RESET COMPLETE:", sessionId);
+    }
   }
 
   const updateSession = (data) => {
@@ -67,9 +96,31 @@ exports.handleZobot = async (req, res) => {
     return updatedSession;
   };
 
-  // ✅ FIXED: Show welcome with email input field immediately on first message
+  // ✅ Show welcome with email input field immediately on first message
   if (!session.welcomeShown) {
-    updateSession({ welcomeShown: true });
+    // Clear ALL authentication and role data
+    updateSession({
+      welcomeShown: true,
+      role: null,
+      userId: null,
+      email: null,
+      authenticatedEmail: null,
+      username: null,
+      isAuthenticated: false,
+      adminStep: null,
+      trainerStep: null,
+      memberStep: null,
+      visitorStep: null,
+      memberFormData: null,
+      trainerFormData: null,
+      adminData: null,
+      membershipData: null,
+      classScheduleData: null,
+      contactName: null,
+      contactEmail: null,
+      contactSubject: null,
+      contactMessage: null,
+    });
 
     return res.json({
       platform: "ZOHOSALESIQ",
@@ -98,35 +149,39 @@ exports.handleZobot = async (req, res) => {
     });
   }
 
-  // ✅ Handle reset requests
+  // 🔥 ENHANCED: Handle manual reset requests with better keywords
+  const msgLower = msg.toLowerCase().trim();
   const isResetRequest =
-    msg.toLowerCase().includes("edit info") ||
-    msg.toLowerCase().includes("change email") ||
-    msg.toLowerCase().includes("update email") ||
-    msg.toLowerCase().includes("logout") ||
-    msg.toLowerCase().includes("reset") ||
-    msg.toLowerCase().includes("start over");
+    msgLower === "reset" ||
+    msgLower === "logout" ||
+    msgLower === "start over" ||
+    msgLower === "new session" ||
+    msgLower === "change email" ||
+    msgLower === "edit info" ||
+    msgLower === "update email" ||
+    msgLower === "switch user" ||
+    msgLower === "change user";
 
   if (isResetRequest) {
-    console.log("📝 User requested to reset");
+    console.log("📝 User requested MANUAL RESET");
 
-    updateSession({
-      role: null,
-      userId: null,
-      email: null,
-      authenticatedEmail: null,
-      username: null,
-      isAuthenticated: false,
-      adminStep: null,
-      trainerStep: null,
-      memberStep: null,
-      visitorStep: null,
-    });
+    // Clear session completely, then create fresh one
+    sessionStore.clear(sessionId);
+
+    session = {
+      welcomeShown: false,
+      conversationId: conversationId,
+      visitorId: visitorId,
+      createdAt: Date.now(),
+    };
+    sessionStore.set(sessionId, session);
 
     return res.json({
       platform: "ZOHOSALESIQ",
       action: "reply",
-      replies: ["Please enter your email address:"],
+      replies: [
+        "🔄 Session reset! Please enter your email address to continue:",
+      ],
       input: {
         type: "email",
         placeholder: "Enter your email address",
@@ -136,8 +191,66 @@ exports.handleZobot = async (req, res) => {
     });
   }
 
-  // ✅ Route authenticated users to their role controllers
+  // 🔥 ENHANCED: Validate authentication state BEFORE routing
   if (session.isAuthenticated && session.role && session.authenticatedEmail) {
+    // Verify user still exists in database
+    try {
+      const user = await User.findById(session.userId);
+
+      if (!user || user.email !== session.authenticatedEmail) {
+        console.log(
+          "⚠️ Authenticated user not found or email mismatch - AUTO-RESETTING"
+        );
+
+        sessionStore.clear(sessionId);
+        session = {
+          welcomeShown: false,
+          conversationId: conversationId,
+          visitorId: visitorId,
+          createdAt: Date.now(),
+        };
+        sessionStore.set(sessionId, session);
+
+        return res.json({
+          platform: "ZOHOSALESIQ",
+          action: "reply",
+          replies: [
+            "⚠️ Your session has expired. Please enter your email address:",
+          ],
+          input: {
+            type: "email",
+            placeholder: "Enter your email address",
+            value: "",
+            error: ["Enter a valid email address"],
+          },
+        });
+      }
+    } catch (err) {
+      console.error("❌ Error verifying user:", err);
+      // On error, reset session to be safe
+      sessionStore.clear(sessionId);
+      session = {
+        welcomeShown: false,
+        conversationId: conversationId,
+        visitorId: visitorId,
+        createdAt: Date.now(),
+      };
+      sessionStore.set(sessionId, session);
+
+      return res.json({
+        platform: "ZOHOSALESIQ",
+        action: "reply",
+        replies: ["❌ Session error. Please enter your email address:"],
+        input: {
+          type: "email",
+          placeholder: "Enter your email address",
+          value: "",
+          error: ["Enter a valid email address"],
+        },
+      });
+    }
+
+    // ✅ Route authenticated users to their role controllers
     console.log(`✅ User authenticated, routing to ${session.role} controller`);
 
     switch (session.role) {
@@ -149,21 +262,38 @@ exports.handleZobot = async (req, res) => {
       case "member":
         return memberController.handleMember(msg, res, session, sessionId);
       default:
-        updateSession({ role: null, userId: null, isAuthenticated: false });
+        // Reset session on invalid role
+        sessionStore.clear(sessionId);
+        session = {
+          welcomeShown: false,
+          conversationId: conversationId,
+          visitorId: visitorId,
+          createdAt: Date.now(),
+        };
+        sessionStore.set(sessionId, session);
+
         return res.json({
           action: "reply",
-          replies: ["Your role is not recognized. Please contact support."],
+          replies: [
+            "⚠️ Your role is not recognized. Please enter your email address:",
+          ],
+          input: {
+            type: "email",
+            placeholder: "Enter your email address",
+            value: "",
+            error: ["Enter a valid email address"],
+          },
         });
     }
   }
 
-  // ✅ NEW: Check if user is already identified as new visitor
+  // ✅ Check if user is already identified as new visitor
   if (session.role === "new_visitor" && session.email) {
     console.log("✅ Routing to new visitor controller");
     return newVisitorController.handleNewVisitor(msg, res, session, sessionId);
   }
 
-  // ✅ Extract email from user message (only runs if not authenticated and not a new visitor)
+  // ✅ Extract email from user message
   const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
   const emailMatch = msg.match(emailRegex);
 
@@ -197,7 +327,6 @@ exports.handleZobot = async (req, res) => {
     if (!user) {
       console.log("❌ User not found - routing to new visitor");
 
-      // ✅ Mark as new visitor in session
       updateSession({
         role: "new_visitor",
         email: userEmail,
@@ -297,4 +426,28 @@ exports.handleZobot = async (req, res) => {
       },
     });
   }
+};
+
+// Endpoint for conversation end (in case you want to use it later)
+exports.handleConversationEnd = async (req, res) => {
+  console.log("🔚 Conversation ended - Clearing session");
+  console.log(JSON.stringify(req.body, null, 2));
+
+  const conversationId =
+    req.body.conversation?.id || req.body.visitor?.active_conversation_id;
+
+  if (conversationId) {
+    console.log(`🗑️ Clearing session for conversation: ${conversationId}`);
+    sessionStore.clear(conversationId);
+
+    return res.json({
+      success: true,
+      message: "Session cleared successfully",
+    });
+  }
+
+  return res.json({
+    success: false,
+    message: "No conversation ID found",
+  });
 };

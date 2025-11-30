@@ -220,7 +220,7 @@ async function callGroqAI(userMessage) {
 }
 
 // Main AI Assistant Handler
-exports.handleAIAssistant = async (message, res, session, visitorId) => {
+exports.handleAIAssistant = async (message, res, session, sessionId) => {
   // Determine the context (new visitor or member) based on session properties
   const isNewVisitor = session.visitorStep !== undefined;
   const backButton = isNewVisitor
@@ -232,7 +232,7 @@ exports.handleAIAssistant = async (message, res, session, visitorId) => {
     if (isNewVisitor) {
       // For new visitors, go back to the main greeting
       session.visitorStep = "greeting";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       const greeting =
         "👋 Welcome to Strength Zone Gym! I'm your virtual assistant. How can I help you today?";
@@ -255,8 +255,8 @@ exports.handleAIAssistant = async (message, res, session, visitorId) => {
     } else {
       // For members, go back to the member dashboard
       session.memberStep = "dashboard";
-      sessionStore.set(visitorId, session);
-      return showMemberDashboard(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return showMemberDashboard(res, session, sessionId);
     }
   }
 
@@ -304,7 +304,7 @@ exports.handleAIAssistant = async (message, res, session, visitorId) => {
 };
 
 // Dashboard function (needed for navigation)
-function showMemberDashboard(res, session, visitorId) {
+function showMemberDashboard(res, session, sessionId) {
   const greeting = `👋 Welcome ${
     session.username || "Member"
   }! How can I assist you today?`;
@@ -324,7 +324,7 @@ function showMemberDashboard(res, session, visitorId) {
 
   // Make sure session step is dashboard
   session.memberStep = "dashboard";
-  sessionStore.set(visitorId, session);
+  sessionStore.set(sessionId, session);
 
   return res.json(payload);
 }

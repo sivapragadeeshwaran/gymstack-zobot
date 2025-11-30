@@ -6,11 +6,11 @@ const ClassSchedule = require("../Models/classSchedule");
 const mongoose = require("mongoose");
 const aiAssistantController = require("./aiAssistantController");
 
-exports.handleMember = (message, res, session, visitorId) => {
+exports.handleMember = (message, res, session, sessionId) => {
   // Initialize member session if not already done
   if (!session.memberStep) {
     session.memberStep = "dashboard";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
   }
 
   const msg = (message || "").toString().trim();
@@ -18,8 +18,8 @@ exports.handleMember = (message, res, session, visitorId) => {
   // Handle "Back to Dashboard" at any point
   if (msg === "⬅️ Back to Dashboard") {
     session.memberStep = "dashboard";
-    sessionStore.set(visitorId, session);
-    return showMemberDashboard(res, session, visitorId);
+    sessionStore.set(sessionId, session);
+    return showMemberDashboard(res, session, sessionId);
   }
 
   // Handle dashboard navigation
@@ -27,30 +27,30 @@ exports.handleMember = (message, res, session, visitorId) => {
     switch (msg) {
       case "📋 Membership Status":
         session.memberStep = "membership_status";
-        sessionStore.set(visitorId, session);
-        return handleMembershipStatus(msg, res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleMembershipStatus(msg, res, session, sessionId);
       case "💳 Renew Membership":
         session.memberStep = "renew_membership";
-        sessionStore.set(visitorId, session);
-        return handleRenewMembership(msg, res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleRenewMembership(msg, res, session, sessionId);
       case "📅 Show Today's / Weekly Class":
         session.memberStep = "show_class";
-        sessionStore.set(visitorId, session);
-        return handleShowClass(msg, res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleShowClass(msg, res, session, sessionId);
       case "👤 Update Profile":
         session.memberStep = "update_profile";
-        sessionStore.set(visitorId, session);
-        return handleUpdateProfile(msg, res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleUpdateProfile(msg, res, session, sessionId);
       case "📊 BMI Calculator":
         session.memberStep = "bmi_calculator";
-        sessionStore.set(visitorId, session);
-        return handleBMICalculator(msg, res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleBMICalculator(msg, res, session, sessionId);
       case "🤖 Talk to AI Assistant":
         session.memberStep = "ai_assistant";
-        sessionStore.set(visitorId, session);
-        return handleAIAssistant(msg, res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleAIAssistant(msg, res, session, sessionId);
       default:
-        return showMemberDashboard(res, session, visitorId);
+        return showMemberDashboard(res, session, sessionId);
     }
   }
 
@@ -58,7 +58,7 @@ exports.handleMember = (message, res, session, visitorId) => {
   switch (session.memberStep) {
     // Membership Status steps
     case "membership_status":
-      return handleMembershipStatus(msg, res, session, visitorId);
+      return handleMembershipStatus(msg, res, session, sessionId);
 
     // Renew Membership steps
     case "renew_membership":
@@ -66,40 +66,40 @@ exports.handleMember = (message, res, session, visitorId) => {
     case "renew_select_plan":
     case "renew_confirm_payment":
     case "renew_upgrade_confirm":
-      return handleRenewMembership(msg, res, session, visitorId);
+      return handleRenewMembership(msg, res, session, sessionId);
 
     // Show Class steps
     case "show_class":
     case "class_schedule_type":
-      return handleShowClass(msg, res, session, visitorId);
+      return handleShowClass(msg, res, session, sessionId);
 
     // Update Profile steps
     case "update_profile":
     case "profile_field_select":
     case "profile_field_update":
     case "profile_update_confirm":
-      return handleUpdateProfile(msg, res, session, visitorId);
+      return handleUpdateProfile(msg, res, session, sessionId);
 
     // BMI Calculator steps
     case "bmi_calculator":
     case "bmi_height":
     case "bmi_weight":
     case "bmi_gender":
-      return handleBMICalculator(msg, res, session, visitorId);
+      return handleBMICalculator(msg, res, session, sessionId);
 
     // AI Assistant steps
     case "ai_assistant":
-      return handleAIAssistant(msg, res, session, visitorId);
+      return handleAIAssistant(msg, res, session, sessionId);
 
     default:
       session.memberStep = "dashboard";
-      sessionStore.set(visitorId, session);
-      return showMemberDashboard(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return showMemberDashboard(res, session, sessionId);
   }
 };
 
 // ----------------------- Dashboard -----------------------
-function showMemberDashboard(res, session, visitorId) {
+function showMemberDashboard(res, session, sessionId) {
   const greeting = `👋 Welcome ${
     session.username || "Member"
   }! How can I assist you today?`;
@@ -119,13 +119,13 @@ function showMemberDashboard(res, session, visitorId) {
 
   // Make sure session step is dashboard
   session.memberStep = "dashboard";
-  sessionStore.set(visitorId, session);
+  sessionStore.set(sessionId, session);
 
   return res.json(payload);
 }
 
 // ----------------------- Membership Status -----------------------
-async function handleMembershipStatus(message, res, session, visitorId) {
+async function handleMembershipStatus(message, res, session, sessionId) {
   try {
     // Get user ID from session
     const userId = session.userId;
@@ -188,7 +188,7 @@ async function handleMembershipStatus(message, res, session, visitorId) {
       }. Would you like to renew it?`;
 
       session.memberStep = "renew_confirm";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -199,7 +199,7 @@ async function handleMembershipStatus(message, res, session, visitorId) {
 
     // Reset session to dashboard
     session.memberStep = "dashboard";
-    sessionStore.set(visitorId, session);
+    sessionStore.set(sessionId, session);
 
     return res.json({
       action: "reply",
@@ -227,13 +227,13 @@ async function handleMembershipStatus(message, res, session, visitorId) {
 }
 
 // ----------------------- Renew Membership -----------------------
-async function handleRenewMembership(message, res, session, visitorId) {
+async function handleRenewMembership(message, res, session, sessionId) {
   try {
     // Handle "Back to Dashboard" at any point
     if (message === "⬅️ Back to Dashboard") {
       session.memberStep = "dashboard";
-      sessionStore.set(visitorId, session);
-      return showMemberDashboard(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return showMemberDashboard(res, session, sessionId);
     }
 
     // Get user ID from session
@@ -299,7 +299,7 @@ async function handleRenewMembership(message, res, session, visitorId) {
         // Store plans in session for later use
         session.plansData = plans;
         session.memberStep = "renew_select_plan";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         return res.json({
           action: "reply",
@@ -316,8 +316,8 @@ async function handleRenewMembership(message, res, session, visitorId) {
       } else if (message === "❌ No" || message === "No") {
         // Reset session to dashboard
         session.memberStep = "dashboard";
-        sessionStore.set(visitorId, session);
-        return showMemberDashboard(res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return showMemberDashboard(res, session, sessionId);
       } else {
         return res.json({
           action: "reply",
@@ -373,7 +373,7 @@ async function handleRenewMembership(message, res, session, visitorId) {
       // Store selected plan
       session.selectedPlan = selectedPlan;
       session.memberStep = "renew_confirm_payment";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       // Show confirmation with payment link using Zoho SalesIQ links format
       const confirmation = `You have selected the ${selectedPlan.name} plan (${selectedPlan.period}) for ${selectedPlan.price} INR.\n\nPlease click the link below to complete your payment:`;
@@ -405,8 +405,8 @@ async function handleRenewMembership(message, res, session, visitorId) {
     if (session.memberStep === "renew_confirm_payment") {
       // Reset session to dashboard
       session.memberStep = "dashboard";
-      sessionStore.set(visitorId, session);
-      return showMemberDashboard(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return showMemberDashboard(res, session, sessionId);
     }
 
     // Handle upgrade confirmation
@@ -434,7 +434,7 @@ async function handleRenewMembership(message, res, session, visitorId) {
         // Store plans in session for later use
         session.plansData = plans;
         session.memberStep = "renew_select_plan";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         return res.json({
           action: "reply",
@@ -451,8 +451,8 @@ async function handleRenewMembership(message, res, session, visitorId) {
       } else if (message === "❌ No" || message === "No") {
         // Reset session to dashboard
         session.memberStep = "dashboard";
-        sessionStore.set(visitorId, session);
-        return showMemberDashboard(res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return showMemberDashboard(res, session, sessionId);
       } else {
         return res.json({
           action: "reply",
@@ -469,7 +469,7 @@ async function handleRenewMembership(message, res, session, visitorId) {
       }. Click below to renew.`;
 
       session.memberStep = "renew_confirm";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -481,7 +481,7 @@ async function handleRenewMembership(message, res, session, visitorId) {
       let response = `You still have ${daysLeft} days left on your membership. Do you want to upgrade your membership?`;
 
       session.memberStep = "renew_upgrade_confirm";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -502,13 +502,13 @@ async function handleRenewMembership(message, res, session, visitorId) {
   }
 }
 
-async function handleShowClass(message, res, session, visitorId) {
+async function handleShowClass(message, res, session, sessionId) {
   try {
     // BACK TO DASHBOARD
     if (message === "⬅️ Back to Dashboard") {
       session.memberStep = "dashboard";
-      sessionStore.set(visitorId, session);
-      return showMemberDashboard(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return showMemberDashboard(res, session, sessionId);
     }
 
     // 1. FETCH USER (Member)
@@ -582,7 +582,7 @@ async function handleShowClass(message, res, session, visitorId) {
       session.trainerName = trainer.name;
       session.trainerUserId = trainer.userId.toString();
       session.memberStep = "class_schedule_type";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -651,7 +651,7 @@ async function handleShowClass(message, res, session, visitorId) {
         });
 
         session.memberStep = "dashboard";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         return res.json({
           action: "reply",
@@ -733,7 +733,7 @@ async function handleShowClass(message, res, session, visitorId) {
         });
 
         session.memberStep = "dashboard";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         return res.json({
           action: "reply",
@@ -772,13 +772,13 @@ async function handleShowClass(message, res, session, visitorId) {
 }
 
 // ----------------------- Update Profile -----------------------
-async function handleUpdateProfile(message, res, session, visitorId) {
+async function handleUpdateProfile(message, res, session, sessionId) {
   try {
     // Handle "Back to Dashboard" at any point
     if (message === "⬅️ Back to Dashboard") {
       session.memberStep = "dashboard";
-      sessionStore.set(visitorId, session);
-      return showMemberDashboard(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return showMemberDashboard(res, session, sessionId);
     }
 
     // Get user ID from session
@@ -816,7 +816,7 @@ async function handleUpdateProfile(message, res, session, visitorId) {
       profileInfo += `Which field would you like to update?`;
 
       session.memberStep = "profile_field_select";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -835,7 +835,7 @@ async function handleUpdateProfile(message, res, session, visitorId) {
       if (message === "✉️ Email" || message === "Email") {
         session.updateField = "email";
         session.memberStep = "profile_field_update";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         return res.json({
           action: "reply",
@@ -851,7 +851,7 @@ async function handleUpdateProfile(message, res, session, visitorId) {
       } else if (message === "📞 Phone" || message === "Phone") {
         session.updateField = "phone";
         session.memberStep = "profile_field_update";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         return res.json({
           action: "reply",
@@ -872,7 +872,7 @@ async function handleUpdateProfile(message, res, session, visitorId) {
       ) {
         session.updateField = "dateOfBirth";
         session.memberStep = "profile_field_update";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         return res.json({
           action: "reply",
@@ -980,7 +980,7 @@ async function handleUpdateProfile(message, res, session, visitorId) {
       // Store new value and ask for confirmation
       session.newValue = newValue;
       session.memberStep = "profile_update_confirm";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       const fieldDisplayName =
         field === "dateOfBirth"
@@ -1017,7 +1017,7 @@ async function handleUpdateProfile(message, res, session, visitorId) {
 
         // Reset session to dashboard
         session.memberStep = "dashboard";
-        sessionStore.set(visitorId, session);
+        sessionStore.set(sessionId, session);
 
         const fieldDisplayName =
           field === "dateOfBirth"
@@ -1045,8 +1045,8 @@ async function handleUpdateProfile(message, res, session, visitorId) {
       } else if (message === "❌ No" || message === "No") {
         // Go back to field selection
         session.memberStep = "update_profile";
-        sessionStore.set(visitorId, session);
-        return handleUpdateProfile("", res, session, visitorId);
+        sessionStore.set(sessionId, session);
+        return handleUpdateProfile("", res, session, sessionId);
       } else {
         return res.json({
           action: "reply",
@@ -1069,13 +1069,13 @@ async function handleUpdateProfile(message, res, session, visitorId) {
 }
 
 // ----------------------- BMI Calculator -----------------------
-async function handleBMICalculator(message, res, session, visitorId) {
+async function handleBMICalculator(message, res, session, sessionId) {
   try {
     // Handle "Back to Dashboard" at any point
     if (message === "⬅️ Back to Dashboard") {
       session.memberStep = "dashboard";
-      sessionStore.set(visitorId, session);
-      return showMemberDashboard(res, session, visitorId);
+      sessionStore.set(sessionId, session);
+      return showMemberDashboard(res, session, sessionId);
     }
 
     // Get user ID from session
@@ -1093,7 +1093,7 @@ async function handleBMICalculator(message, res, session, visitorId) {
     // Handle height input
     if (session.memberStep === "bmi_calculator") {
       session.memberStep = "bmi_height";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -1120,7 +1120,7 @@ async function handleBMICalculator(message, res, session, visitorId) {
       // Store height and move to weight input
       session.height = parseInt(message);
       session.memberStep = "bmi_weight";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -1147,7 +1147,7 @@ async function handleBMICalculator(message, res, session, visitorId) {
       // Store weight and move to gender input
       session.weight = parseFloat(message);
       session.memberStep = "bmi_gender";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -1231,7 +1231,7 @@ async function handleBMICalculator(message, res, session, visitorId) {
 
       // Reset session to dashboard
       session.memberStep = "dashboard";
-      sessionStore.set(visitorId, session);
+      sessionStore.set(sessionId, session);
 
       return res.json({
         action: "reply",
@@ -1260,12 +1260,12 @@ async function handleBMICalculator(message, res, session, visitorId) {
 }
 
 // ----------------------- AI Assistant -----------------------
-function handleAIAssistant(message, res, session, visitorId) {
+function handleAIAssistant(message, res, session, sessionId) {
   // Delegate to the AI assistant controller
   return aiAssistantController.handleAIAssistant(
     message,
     res,
     session,
-    visitorId
+    sessionId
   );
 }
